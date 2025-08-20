@@ -2,7 +2,7 @@
 
 **Plataforma de catálogo de jogos com design cyberpunk e interface moderna**
 
-Um serviço web que simula um game pass, oferecendo navegação por catálogo de jogos, sistema de busca, categorização por gêneros e planos de assinatura.
+Uma Assinatura web que vende um game pass, oferecendo um catálogo de jogos com uma proposta inovadora.
 
 ## 📋 Escopo do Projeto
 
@@ -241,7 +241,7 @@ Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 
 ---
 
-**Desenvolvido por [Bruno Silva Campos] E [Guilherme De Deus Dalosto](https://github.com/dedeusgui)**;(https://github.com/BrunoSilvaCampos)**
+**Desenvolvido por [Bruno Silva Campos] E **[Guilherme De Deus Dalosto] (https://github.com/dedeusgui)**;(https://github.com/BrunoSilvaCampos)**
 
 *Orion Game Pass - Revolucionando a descoberta de jogos com design futurístico e tecnologia moderna*
 (wireframe)https://excalidraw.com/#json=4qSWLXDtzRaf-nFVZwMPY,cUjZboAHYVuOTI_mTKeIBw
