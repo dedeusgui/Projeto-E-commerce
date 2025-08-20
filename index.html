@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Orion - Loja de Jogos</title>
+    <title>Orion - Catálogo de Jogos</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,119 +20,105 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header>
-      <nav>
-        <div class="logo">O</div>
-        <div class="title">ORION</div>
-        <div class="search">
-          <input id="input-search" placeholder="Buscar jogos..." />
-          <button class="search-button">&gt;&gt;</button>
+    <header class="custom-header sticky-top">
+      <nav class="navbar navbar-expand-lg">
+        <div class="container-xl">
+          <div class="navbar-brand">
+            <div class="logo">
+              <img src="img/logo.png" alt="Logo Orion" class="img-fluid" />
+            </div>
+          </div>
+          <div class="navbar-text flex-grow-1 text-center">
+            <h1 class="header-title mb-0">ORION GAME PASS</h1>
+          </div>
+          <div>
+            <a class="custom-search-btn" id="assinar" href="assinatura.html">
+              ASSINE JÁ
+            </a>
+          </div>
         </div>
       </nav>
     </header>
 
-    <div class="main-container">
-      <aside>
-        <h3>Categorias</h3>
-        <ul class="category">
-          <li>Ação</li>
-          <li>Aventura</li>
-          <li>RPG</li>
-          <li>Estratégia</li>
-          <li>Corrida</li>
-          <li>Esportes</li>
-        </ul>
-      </aside>
+    <div class="container-fluid">
+      <div class="row">
+        <aside class="col-lg-2 custom-sidebar">
+          <div class="sidebar-content">
+            <h4 class="sidebar-title">Categorias</h4>
+            <ul class="nav flex-column custom-nav">
+              <li class="nav-item category-item active" data-genre="popular">
+                Populares
+              </li>
+              <li class="nav-item category-item" data-genre="action">Ação</li>
+              <li class="nav-item category-item" data-genre="strategy">
+                Estratégia
+              </li>
+              <li
+                class="nav-item category-item"
+                data-genre="role-playing-games-rpg"
+              >
+                RPG
+              </li>
+              <li class="nav-item category-item" data-genre="shooter">
+                Tiro (Shooter)
+              </li>
+              <li class="nav-item category-item" data-genre="adventure">
+                Aventura
+              </li>
+              <li class="nav-item category-item" data-genre="puzzle">Puzzle</li>
+              <li class="nav-item category-item" data-genre="racing">
+                Corrida
+              </li>
+              <li class="nav-item category-item" data-genre="sports">
+                Esportes
+              </li>
+            </ul>
+          </div>
+        </aside>
 
-      <main>
-        <div class="cards">
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Cyberpunk 2077</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 99,90</div>
+        <main class="col-lg-10 main-content">
+          <div class="container-fluid">
+            <form class="mb-4" id="search-form">
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control custom-search-input"
+                  placeholder="Digite o nome de um jogo..."
+                  id="search-input"
+                />
+                <button class="btn btn-primary custom-search-btn" type="submit">
+                  Buscar
+                </button>
               </div>
+            </form>
+
+            <h2 class="custom-title mb-4" id="catalog-title">
+              Populares <span class="text-muted fs-5" id="game-count"></span>
+            </h2>
+
+            <div class="row g-4" id="game-cards-container"></div>
+
+            <div
+              id="loading-indicator"
+              class="text-center py-4"
+              style="display: none"
+            >
+              <p class="text-light">Carregando mais jogos...</p>
             </div>
           </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Starfield</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 149,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Baldur's Gate 3</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 199,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Elden Ring</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 179,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Spider-Man 2</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 299,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Hogwarts Legacy</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 249,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">God of War Ragnarök</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 279,90</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-img"></div>
-            <div class="card-content">
-              <div class="card-title">Horizon Forbidden West</div>
-              <div class="card-bottom">
-                <div class="card-price">R$ 199,90</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
 
-    <footer>
-      <p>&copy; 2025 Orion Gaming Store - Todos os direitos reservados.</p>
+    <footer class="custom-footer text-center">
+      <div class="container">
+        <p class="mb-0">
+          &copy; 2025 Orion Game Pass - Todos os direitos reservados.
+        </p>
+      </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
