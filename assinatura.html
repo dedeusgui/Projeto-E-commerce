@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Header Padronizado -->
     <header class="custom-header sticky-top">
       <nav class="navbar navbar-expand-lg">
         <div class="container-xl">
@@ -31,10 +32,9 @@
           <div class="navbar-text flex-grow-1 text-center">
             <h1 class="header-title mb-0">ORION GAME PASS</h1>
           </div>
-          <div>
-            <a href="index.html" class="custom-search-btn btn"
-              >VOLTAR AO CATÁLOGO</a
-            >
+          <div class="d-flex gap-3 align-items-center">
+            <a href="index.html" class="nav-link-custom">INÍCIO</a>
+            <a href="catalogo.html" class="nav-link-custom">CATÁLOGO</a>
           </div>
         </div>
       </nav>
@@ -42,57 +42,252 @@
 
     <main class="main-content">
       <div class="container py-5">
+        <!-- Título da Página -->
         <div class="text-center mb-5">
-          <h2 class="custom-title">Escolha seu Plano</h2>
-          <p class="text-muted">
-            Acesso ilimitado a centenas de jogos incríveis.
+          <h2 class="section-title">Escolha seu Plano</h2>
+          <p class="section-subtitle">
+            Acesso ilimitado a centenas de jogos incríveis com benefícios
+            exclusivos.
           </p>
         </div>
 
-        <div class="row justify-content-center g-4">
-          <div class="col-lg-4 col-md-6">
-            <div class="card custom-card h-100 subscription-card">
-              <div class="card-body text-center d-flex flex-column p-4">
-                <h3 class="card-title custom-card-title fs-4">PLANO MENSAL</h3>
-                <p class="text-muted">Cobrança recorrente a cada mês.</p>
-                <div class="my-4">
-                  <span class="display-4 fw-bold custom-card-price">R$29</span>
-                  <span class="text-muted">/mês</span>
+        <!-- Comparação de Planos -->
+        <div class="row justify-content-center g-4 mb-5">
+          <!-- Plano Mensal -->
+          <div class="col-lg-3 col-md-6">
+            <div class="subscription-card">
+              <div class="card-header">
+                <h3 class="plan-title">MENSAL</h3>
+                <p class="plan-description">
+                  Cobrança recorrente a cada mês. Flexibilidade total.
+                </p>
+              </div>
+              <div class="card-body">
+                <div class="price-section">
+                  <span class="price">R$29</span>
+                  <span class="period">/mês</span>
                 </div>
-                <ul class="list-unstyled text-start mb-4">
+                <ul class="benefits-list">
                   <li>✓ Acesso ao catálogo completo</li>
                   <li>✓ Jogue lançamentos no primeiro dia</li>
                   <li>✓ Descontos exclusivos para membros</li>
                   <li>✓ Cancele quando quiser</li>
+                  <li>✓ Suporte via chat</li>
                 </ul>
-                <button class="btn custom-search-btn mt-auto">
+                <a href="pagamento.html?plan=mensal" class="subscription-btn">
                   Assinar Agora
-                </button>
+                </a>
               </div>
             </div>
           </div>
 
-          <div class="col-lg-4 col-md-6">
-            <div class="card custom-card h-100 subscription-card-featured">
-              <div class="card-header text-center fw-bold py-2">
-                MAIS POPULAR
+          <!-- Plano Trimestral -->
+          <div class="col-lg-3 col-md-6">
+            <div class="subscription-card popular-badge">
+              <div class="popular-label">ECONOMIZE 10%</div>
+              <div class="card-header">
+                <h3 class="plan-title">TRIMESTRAL</h3>
+                <p class="plan-description">
+                  Pague 3 meses e economize. Ideal para testar.
+                </p>
               </div>
-              <div class="card-body text-center d-flex flex-column p-4">
-                <h3 class="card-title custom-card-title fs-4">PLANO ANUAL</h3>
-                <p class="text-muted">Economize 20% com o plano anual.</p>
-                <div class="my-4">
-                  <span class="display-4 fw-bold custom-card-price">R$279</span>
-                  <span class="text-muted">/ano</span>
+              <div class="card-body">
+                <div class="price-section">
+                  <span class="price">R$78</span>
+                  <span class="period">/3 meses</span>
+                  <span class="original-price">R$87</span>
                 </div>
-                <ul class="list-unstyled text-start mb-4">
+                <ul class="benefits-list">
                   <li>✓ Todos os benefícios do plano mensal</li>
+                  <li>✓ **Economia de R$ 9 no trimestre**</li>
+                  <li>✓ Acesso antecipado a demos</li>
+                  <li>✓ Suporte prioritário</li>
+                  <li>✓ Badge exclusivo no perfil</li>
+                </ul>
+                <a
+                  href="pagamento.html?plan=trimestral"
+                  class="subscription-btn"
+                >
+                  Assinar Agora
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Plano Anual -->
+          <div class="col-lg-3 col-md-6">
+            <div class="subscription-card featured-card">
+              <div class="featured-label">MAIS POPULAR</div>
+              <div class="card-header">
+                <h3 class="plan-title">ANUAL</h3>
+                <p class="plan-description">
+                  Máxima economia. Para os verdadeiros gamers.
+                </p>
+              </div>
+              <div class="card-body">
+                <div class="price-section">
+                  <span class="price">R$279</span>
+                  <span class="period">/ano</span>
+                  <span class="original-price">R$348</span>
+                </div>
+                <ul class="benefits-list">
+                  <li>✓ Todos os benefícios dos outros planos</li>
                   <li>✓ **Economia de R$ 69 por ano**</li>
                   <li>✓ Acesso antecipado a betas</li>
-                  <li>✓ Suporte prioritário</li>
+                  <li>✓ Suporte VIP 24/7</li>
+                  <li>✓ Conteúdos exclusivos</li>
                 </ul>
-                <button class="btn custom-search-btn mt-auto">
+                <a href="pagamento.html?plan=anual" class="subscription-btn">
                   Assinar Agora
-                </button>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Vantagens -->
+        <div class="benefits-section">
+          <h3 class="text-center mb-5">Por que escolher o Orion Game Pass?</h3>
+          <div class="row g-4">
+            <div class="col-md-4">
+              <div class="benefit-card">
+                <div class="benefit-icon">
+                  <i class="fas fa-gamepad"></i>
+                </div>
+                <h4>Catálogo Imenso</h4>
+                <p>
+                  Centenas de jogos AAA, indies e exclusivos. Sempre algo novo
+                  para jogar.
+                </p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="benefit-card">
+                <div class="benefit-icon">
+                  <i class="fas fa-rocket"></i>
+                </div>
+                <h4>Lançamentos Day One</h4>
+                <p>
+                  Jogue os maiores lançamentos no mesmo dia que chegam às lojas.
+                </p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="benefit-card">
+                <div class="benefit-icon">
+                  <i class="fas fa-percent"></i>
+                </div>
+                <h4>Descontos Exclusivos</h4>
+                <p>
+                  Até 20% de desconto em jogos, DLCs e conteúdos adicionais.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="faq-section mt-5">
+          <h3 class="text-center mb-5">Perguntas Frequentes</h3>
+          <div class="row justify-content-center">
+            <div class="col-lg-8">
+              <div class="accordion" id="faqAccordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button
+                      class="accordion-button"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#faq1"
+                    >
+                      Posso cancelar minha assinatura a qualquer momento?
+                    </button>
+                  </h2>
+                  <div
+                    id="faq1"
+                    class="accordion-collapse collapse show"
+                    data-bs-parent="#faqAccordion"
+                  >
+                    <div class="accordion-body">
+                      Sim! Você pode cancelar sua assinatura a qualquer momento
+                      através do seu painel de usuário. Não há taxas de
+                      cancelamento e você manterá o acesso até o final do
+                      período já pago.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button
+                      class="accordion-button collapsed"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#faq2"
+                    >
+                      Os jogos ficam disponíveis offline?
+                    </button>
+                  </h2>
+                  <div
+                    id="faq2"
+                    class="accordion-collapse collapse"
+                    data-bs-parent="#faqAccordion"
+                  >
+                    <div class="accordion-body">
+                      Alguns jogos suportam modo offline depois de baixados, mas
+                      é necessário conexão com a internet pelo menos uma vez a
+                      cada 30 dias para verificar a assinatura ativa.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button
+                      class="accordion-button collapsed"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#faq3"
+                    >
+                      Posso jogar em quantos dispositivos?
+                    </button>
+                  </h2>
+                  <div
+                    id="faq3"
+                    class="accordion-collapse collapse"
+                    data-bs-parent="#faqAccordion"
+                  >
+                    <div class="accordion-body">
+                      Você pode instalar jogos em até 5 dispositivos diferentes,
+                      mas só pode jogar em um dispositivo por vez com a mesma
+                      conta.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button
+                      class="accordion-button collapsed"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#faq4"
+                    >
+                      E se eu não gostar do serviço?
+                    </button>
+                  </h2>
+                  <div
+                    id="faq4"
+                    class="accordion-collapse collapse"
+                    data-bs-parent="#faqAccordion"
+                  >
+                    <div class="accordion-body">
+                      Oferecemos garantia de 7 dias. Se não ficar satisfeito,
+                      entre em contato conosco e faremos o reembolso integral do
+                      primeiro pagamento.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -100,14 +295,99 @@
       </div>
     </main>
 
-    <footer class="custom-footer text-center">
+    <!-- Footer -->
+    <footer class="custom-footer">
       <div class="container">
-        <p class="mb-0">
-          &copy; 2025 Orion Game Pass - Todos os direitos reservados.
-        </p>
+        <div class="footer-content">
+          <p>&copy; 2025 Orion Game Pass - Todos os direitos reservados.</p>
+          <div class="footer-links">
+            <a href="#">Termos de Uso</a>
+            <a href="#">Privacidade</a>
+            <a href="#">Suporte</a>
+          </div>
+        </div>
       </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <style>
+      .benefits-section {
+        background: rgba(106, 13, 173, 0.05);
+        padding: 50px 0;
+        border-radius: var(--border-radius);
+        margin: 50px 0;
+      }
+
+      .benefit-card {
+        background: var(--card-bg);
+        padding: 30px;
+        border-radius: var(--border-radius);
+        text-align: center;
+        border: 2px solid var(--purple);
+        transition: var(--transition);
+        height: 100%;
+      }
+
+      .benefit-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--neon-cyan);
+        box-shadow: var(--glow) var(--neon-cyan);
+      }
+
+      .benefit-icon {
+        font-size: 3rem;
+        color: var(--neon-magenta);
+        margin-bottom: 20px;
+      }
+
+      .benefit-card h4 {
+        color: var(--neon-cyan);
+        margin-bottom: 15px;
+        font-weight: 700;
+      }
+
+      .benefit-card p {
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      .faq-section {
+        padding: 50px 0;
+      }
+
+      .accordion-item {
+        background: var(--card-bg) !important;
+        border: 2px solid var(--purple) !important;
+        margin-bottom: 10px !important;
+        border-radius: var(--border-radius) !important;
+        overflow: hidden;
+      }
+
+      .accordion-button {
+        background: transparent !important;
+        color: var(--text-color) !important;
+        border: none !important;
+        font-weight: 600;
+        padding: 20px !important;
+      }
+
+      .accordion-button:not(.collapsed) {
+        background: rgba(255, 0, 255, 0.1) !important;
+        color: var(--neon-magenta) !important;
+      }
+
+      .accordion-button:focus {
+        box-shadow: none !important;
+      }
+
+      .accordion-body {
+        background: rgba(0, 0, 0, 0.3) !important;
+        color: var(--text-muted) !important;
+        padding: 20px !important;
+        line-height: 1.6;
+      }
+    </style>
   </body>
 </html>
