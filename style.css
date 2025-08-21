@@ -391,6 +391,7 @@ body::before {
   transition: var(--transition);
   border: 2px solid transparent;
   position: relative;
+  overflow: hidden;
 }
 
 .featured-game-card::before {
@@ -443,6 +444,7 @@ body::before {
   justify-content: center;
   opacity: 0;
   transition: var(--transition);
+  z-index: 1;
 }
 
 .play-button {
@@ -470,6 +472,8 @@ body::before {
 }
 
 .game-info {
+  position: relative;
+  z-index: 2;
   padding: 20px;
 }
 
@@ -667,17 +671,14 @@ body::before {
   background: var(--sidebar-bg);
   backdrop-filter: blur(20px);
   border-right: 3px solid transparent;
-
   background-origin: border-box;
   background-clip: content-box, border-box;
-
   box-shadow: 10px 0 30px rgba(0, 255, 255, 0.2);
   min-height: 100vh;
 }
 
 .sidebar-content {
   position: sticky;
-  border-radius: 15%;
   padding: 15px;
   top: 120px;
   max-height: calc(100vh - 140px);

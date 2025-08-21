@@ -1,6 +1,20 @@
 // Cole a sua chave da API da RAWG aqui
 const apiKey = "9d8f7b3b9c054b31ae12b147798d28ca";
 
+// --- CONFIGURAÇÕES DE FILTROS DE QUALIDADE ---
+const QUALITY_FILTERS = {
+  // Filtro mínimo de Metacritic (elimina jogos muito ruins)
+  MIN_METACRITIC: 60,
+  // Rating mínimo (1-5, elimina jogos mal avaliados)
+  MIN_RATING: 3.5,
+  // Número mínimo de avaliações (elimina jogos obscuros/asset flips)
+  MIN_RATINGS_COUNT: 100,
+  // Excluir plataformas móveis para evitar jogos casuais de baixa qualidade
+  EXCLUDE_MOBILE: true,
+  // Focar apenas em jogos mais recentes (últimos 15 anos)
+  MIN_YEAR: 2010,
+};
+
 // --- SELETORES DE ELEMENTOS HTML ---
 const gamesContainer = document.getElementById("game-cards-container");
 const searchForm = document.getElementById("search-form");
@@ -20,12 +34,81 @@ let currentViewMode = "grid"; // 'grid' ou 'list'
 let currentSearchTerm = "";
 let currentGenre = "popular";
 
-// --- FUNÇÃO PARA CRIAR CARD DE JOGO ---
+// --- FUNÇÃO PARA CONSTRUIR URL COM FILTROS DE QUALIDADE ---
+function buildQualityFilteredURL(baseParams = {}) {
+  const params = new URLSearchParams({
+    key: apiKey,
+    page_size: 12,
+    // Ordena por rating ponderado (combina rating e popularidade)
+    ordering: "-rating,-ratings_count",
+    // Data mínima para jogos mais recentes
+    dates: `${
+      QUALITY_FILTERS.MIN_YEAR
+    }-01-01,${new Date().getFullYear()}-12-31`,
+    // Rating mínimo
+    rating: `${QUALITY_FILTERS.MIN_RATING},5`,
+    // Metacritic mínimo
+    metacritic: `${QUALITY_FILTERS.MIN_METACRITIC},100`,
+    ...baseParams,
+  });
+
+  // Exclui plataformas móveis se configurado
+  if (QUALITY_FILTERS.EXCLUDE_MOBILE) {
+    // IDs das principais plataformas (PC, PlayStation, Xbox, Nintendo)
+    params.set("platforms", "4,187,1,18,186,7,3,8,9,13,14,15,16,17,19,21");
+  }
+
+  return `https://api.rawg.io/api/games?${params.toString()}`;
+}
+
+// --- FUNÇÃO PARA FILTRAR JOGOS POR QUALIDADE (LADO CLIENTE) ---
+function filterGamesByQuality(games) {
+  return games.filter((game) => {
+    // Filtra por número mínimo de avaliações
+    if (
+      game.ratings_count &&
+      game.ratings_count < QUALITY_FILTERS.MIN_RATINGS_COUNT
+    ) {
+      return false;
+    }
+
+    // Filtra jogos sem rating
+    if (!game.rating || game.rating < QUALITY_FILTERS.MIN_RATING) {
+      return false;
+    }
+
+    // Filtra por Metacritic se disponível
+    if (game.metacritic && game.metacritic < QUALITY_FILTERS.MIN_METACRITIC) {
+      return false;
+    }
+
+    // Filtra jogos suspeitos (nomes muito genéricos ou com números aleatórios)
+    const suspiciousNamePatterns = [
+      /^[A-Z\s]+\d+$/i, // Nomes só com letras maiúsculas e números
+      /simulator\s*\d*$/i, // Simuladores genéricos
+      /\b(asset|flip|quick|simple|basic)\b/i, // Palavras comuns em asset flips
+      /^\w{1,3}\s*\d+$/i, // Nomes muito curtos com números
+    ];
+
+    if (suspiciousNamePatterns.some((pattern) => pattern.test(game.name))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+// --- FUNÇÃO PARA CRIAR CARD DE JOGO (COM INDICADORES DE QUALIDADE) ---
 function createGameCard(game, index) {
   const releaseDate = game.released
     ? new Date(game.released).toLocaleDateString("pt-BR")
     : "Não informado";
   const rating = game.rating ? game.rating.toFixed(1) : "N/A";
+  const metacritic = game.metacritic || null;
+  const ratingsCount = game.ratings_count
+    ? game.ratings_count.toLocaleString("pt-BR")
+    : "N/A";
+
   const genres = game.genres
     ? game.genres
         .slice(0, 2)
@@ -46,6 +129,29 @@ function createGameCard(game, index) {
       game.name
     )}`;
 
+  // Badge de qualidade baseado no Metacritic
+  let qualityBadge = "";
+  if (metacritic) {
+    let badgeClass = "bg-success";
+    let qualityText = "Excelente";
+
+    if (metacritic >= 90) {
+      badgeClass = "bg-success";
+      qualityText = "Obra-prima";
+    } else if (metacritic >= 80) {
+      badgeClass = "bg-success";
+      qualityText = "Excelente";
+    } else if (metacritic >= 70) {
+      badgeClass = "bg-info";
+      qualityText = "Muito Bom";
+    } else if (metacritic >= 60) {
+      badgeClass = "bg-warning";
+      qualityText = "Bom";
+    }
+
+    qualityBadge = `<span class="badge ${badgeClass} ms-1">${qualityText}</span>`;
+  }
+
   if (currentViewMode === "list") {
     return `
       <div class="col-12 game-item" data-index="${index}">
@@ -60,9 +166,24 @@ function createGameCard(game, index) {
             <div class="col-md-9">
               <div class="card-body d-flex flex-column h-100">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title custom-card-title mb-0">${game.name}</h5>
-                  <span class="badge bg-info">${rating} ★</span>
+                  <h5 class="card-title custom-card-title mb-0">${
+                    game.name
+                  }</h5>
+                  <div class="d-flex align-items-center">
+                    <span class="badge bg-info">${rating} ★</span>
+                    ${qualityBadge}
+                  </div>
                 </div>
+                
+                <div class="quality-indicators mb-2">
+                  ${
+                    metacritic
+                      ? `<small class="text-info me-3"><i class="fas fa-trophy me-1"></i>Metacritic: ${metacritic}</small>`
+                      : ""
+                  }
+                  <small class="text-muted"><i class="fas fa-users me-1"></i>${ratingsCount} avaliações</small>
+                </div>
+                
                 <p class="card-text text-muted small mb-2">
                   <i class="fas fa-calendar me-1"></i>Lançamento: ${releaseDate}
                 </p>
@@ -74,7 +195,9 @@ function createGameCard(game, index) {
                 </p>
                 <div class="mt-auto d-flex justify-content-between align-items-end">
                   <div class="custom-card-price">Disponível no Game Pass</div>
-                  <button class="btn btn-sm btn-outline-info" onclick="showGameDetails(${game.id})">
+                  <button class="btn btn-sm btn-outline-info" onclick="showGameDetails(${
+                    game.id
+                  })">
                     <i class="fas fa-info-circle me-1"></i>Detalhes
                   </button>
                 </div>
@@ -95,15 +218,28 @@ function createGameCard(game, index) {
                  onerror="this.src='https://via.placeholder.com/400x250/1a0033/00ffff?text=Jogo'">
             <div class="position-absolute top-0 end-0 m-2">
               <span class="badge bg-info">${rating} ★</span>
+              ${qualityBadge}
             </div>
+            ${
+              metacritic
+                ? `<div class="position-absolute top-0 start-0 m-2">
+              <span class="badge bg-dark">Meta: ${metacritic}</span>
+            </div>`
+                : ""
+            }
             <div class="card-img-overlay d-flex align-items-center justify-content-center opacity-0 hover-overlay">
-              <button class="btn btn-primary btn-lg" onclick="showGameDetails(${game.id})">
+              <button class="btn btn-primary btn-lg" onclick="showGameDetails(${
+                game.id
+              })">
                 <i class="fas fa-play me-2"></i>Ver Detalhes
               </button>
             </div>
           </div>
           <div class="card-body d-flex flex-column">
             <h5 class="card-title custom-card-title">${game.name}</h5>
+            <div class="quality-info mb-2">
+              <small class="text-muted"><i class="fas fa-users me-1"></i>${ratingsCount} avaliações</small>
+            </div>
             <p class="card-text small text-muted mb-2">
               <i class="fas fa-calendar me-1"></i>${releaseDate}
             </p>
@@ -120,7 +256,8 @@ function createGameCard(game, index) {
   }
 }
 
-// --- FUNÇÃO PARA BUSCAR E EXIBIR JOGOS (MELHORADA) ---
+// --- FUNÇÃO PARA BUSCAR E EXIBIR JOGOS (MELHORADA COM FILTROS) ---
+// --- FUNÇÃO PARA BUSCAR E EXIBIR JOGOS (CORREÇÃO DO CONTADOR) ---
 function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
   if (isLoading) return;
   isLoading = true;
@@ -149,17 +286,24 @@ function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
       return response.json();
     })
     .then((data) => {
-      // Atualiza o contador de jogos (apenas na primeira página)
+      // Filtra jogos por qualidade no lado cliente
+      const filteredGames = filterGamesByQuality(data.results || []);
+
+      // CORREÇÃO: Atualiza o contador com o TOTAL de jogos encontrados pela API
+      // não apenas os que aparecem na tela atual
       if (isNewSearch && gameCountSpan) {
-        gameCountSpan.textContent = `(${data.count || 0} jogos encontrados)`;
+        // Usa o 'count' total da API, não o número de jogos filtrados da página atual
+        const totalGames = data.count || 0;
+        gameCountSpan.textContent = `(${totalGames.toLocaleString(
+          "pt-BR"
+        )} jogos de qualidade encontrados)`;
       }
 
       // Salva a URL da PRÓXIMA página de resultados
       currentUrl = data.next;
-      const games = data.results || [];
 
       // Se não há jogos e é nova busca, mostra mensagem
-      if (games.length === 0 && isNewSearch) {
+      if (filteredGames.length === 0 && isNewSearch) {
         if (noGamesMessage) {
           noGamesMessage.style.display = "block";
         } else {
@@ -167,8 +311,8 @@ function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
             <div class="col-12">
               <div class="text-center py-5">
                 <i class="fas fa-gamepad fa-4x text-muted mb-3"></i>
-                <h3 class="text-muted">Nenhum jogo encontrado</h3>
-                <p class="text-muted">Tente buscar por outro termo ou categoria.</p>
+                <h3 class="text-muted">Nenhum jogo de qualidade encontrado</h3>
+                <p class="text-muted">Tente buscar por outro termo ou categoria. Só mostramos jogos com boa avaliação!</p>
               </div>
             </div>
           `;
@@ -176,7 +320,7 @@ function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
       }
 
       // Adiciona os novos cards ao container
-      games.forEach((game, index) => {
+      filteredGames.forEach((game, index) => {
         const gameCardHTML = createGameCard(game, index);
         gamesContainer.innerHTML += gameCardHTML;
       });
@@ -213,7 +357,6 @@ function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
       }
     });
 }
-
 // --- FUNÇÃO PARA ADICIONAR ANIMAÇÕES AOS CARDS ---
 function addCardAnimations() {
   const newCards = document.querySelectorAll(".game-item:not(.animated)");
@@ -241,14 +384,14 @@ function handleNewSearch(url, title) {
 // --- FUNÇÃO PARA TENTAR NOVAMENTE A ÚLTIMA BUSCA ---
 function retryLastSearch() {
   if (currentSearchTerm) {
-    const searchApiUrl = `https://api.rawg.io/api/games?key=${apiKey}&search=${currentSearchTerm}&page_size=12`;
+    const searchApiUrl = buildQualityFilteredURL({ search: currentSearchTerm });
     handleNewSearch(searchApiUrl, `Resultados para: "${currentSearchTerm}"`);
   } else {
     loadCategoryGames(currentGenre);
   }
 }
 
-// --- FUNÇÃO PARA CARREGAR JOGOS POR CATEGORIA ---
+// --- FUNÇÃO PARA CARREGAR JOGOS POR CATEGORIA (COM FILTROS DE QUALIDADE) ---
 function loadCategoryGames(genre) {
   currentGenre = genre;
   currentSearchTerm = "";
@@ -263,12 +406,19 @@ function loadCategoryGames(genre) {
   }
 
   if (genre === "popular") {
-    apiUrl = `https://api.rawg.io/api/games?key=${apiKey}&dates=2023-01-01,2024-12-31&ordering=-rating&page_size=12`;
+    // Para jogos populares, usa ordering por rating e popularidade
+    apiUrl = buildQualityFilteredURL({
+      ordering: "-rating,-ratings_count,-added",
+    });
   } else {
-    apiUrl = `https://api.rawg.io/api/games?key=${apiKey}&genres=${genre}&page_size=12`;
+    // Para gêneros específicos
+    apiUrl = buildQualityFilteredURL({
+      genres: genre,
+      ordering: "-rating,-metacritic",
+    });
   }
 
-  handleNewSearch(apiUrl, genreName || "Jogos");
+  handleNewSearch(apiUrl, genreName || "Jogos de Qualidade");
 }
 
 // --- FUNÇÃO PARA ALTERNAR ENTRE VISUALIZAÇÕES ---
@@ -285,7 +435,7 @@ function switchViewMode(mode) {
 
   // Recarrega os jogos na nova visualização
   if (currentSearchTerm) {
-    const searchApiUrl = `https://api.rawg.io/api/games?key=${apiKey}&search=${currentSearchTerm}&page_size=12`;
+    const searchApiUrl = buildQualityFilteredURL({ search: currentSearchTerm });
     handleNewSearch(searchApiUrl, `Resultados para: "${currentSearchTerm}"`);
   } else {
     loadCategoryGames(currentGenre);
@@ -363,6 +513,9 @@ function showGameDetails(gameId) {
         : "N/A";
       const rating = game.rating ? game.rating.toFixed(1) : "N/A";
       const metacritic = game.metacritic || "N/A";
+      const ratingsCount = game.ratings_count
+        ? game.ratings_count.toLocaleString("pt-BR")
+        : "N/A";
 
       modalBody.innerHTML = `
         <div class="row">
@@ -376,7 +529,7 @@ function showGameDetails(gameId) {
           <div class="col-md-8">
             <div class="game-details">
               <div class="mb-3">
-                <h6 class="text-info">Avaliação:</h6>
+                <h6 class="text-info">Avaliação de Qualidade:</h6>
                 <div class="d-flex align-items-center gap-3">
                   <span class="badge bg-primary fs-6">${rating} ★</span>
                   ${
@@ -384,6 +537,7 @@ function showGameDetails(gameId) {
                       ? `<span class="badge bg-success fs-6">Metacritic: ${metacritic}</span>`
                       : ""
                   }
+                  <small class="text-muted">${ratingsCount} avaliações</small>
                 </div>
               </div>
               
@@ -513,7 +667,7 @@ if (searchForm) {
     const searchTerm = searchInput.value.trim();
     if (searchTerm) {
       currentSearchTerm = searchTerm;
-      const searchApiUrl = `https://api.rawg.io/api/games?key=${apiKey}&search=${searchTerm}&page_size=12`;
+      const searchApiUrl = buildQualityFilteredURL({ search: searchTerm });
       handleNewSearch(searchApiUrl, `Resultados para: "${searchTerm}"`);
     }
   });
@@ -558,22 +712,26 @@ window.addEventListener("scroll", () => {
 
 // --- CARREGAMENTO INICIAL ---
 function loadInitialGames() {
-  const popularGamesUrl = `https://api.rawg.io/api/games?key=${apiKey}&dates=2023-01-01,2024-12-31&ordering=-rating&page_size=12`;
-  handleNewSearch(popularGamesUrl, "Populares");
+  const popularGamesUrl = buildQualityFilteredURL({
+    ordering: "-rating,-ratings_count,-added",
+  });
+  handleNewSearch(popularGamesUrl, "Jogos Populares de Qualidade");
 }
 
-// --- FUNÇÃO PARA BUSCAR JOGOS EM DESTAQUE ---
+// --- FUNÇÃO PARA BUSCAR JOGOS EM DESTAQUE (COM FILTROS) ---
 function loadFeaturedGames() {
   const featuredGamesContainer = document.querySelector(
     ".featured-games-section .row"
   );
   if (!featuredGamesContainer) return;
 
-  // Lista de jogos específicos para destacar
+  // Lista de jogos específicos para destacar (jogos conhecidamente bons)
   const featuredGameNames = [
     "Cyberpunk 2077",
     "The Witcher 3",
     "Red Dead Redemption 2",
+    "God of War",
+    "Horizon Zero Dawn",
   ];
 
   featuredGamesContainer.innerHTML = `
@@ -584,17 +742,21 @@ function loadFeaturedGames() {
     </div>
   `;
 
-  // Busca jogos em destaque
-  const searchPromises = featuredGameNames.map((gameName) =>
-    fetch(
-      `https://api.rawg.io/api/games?key=${apiKey}&search=${encodeURIComponent(
-        gameName
-      )}&page_size=1`
-    )
+  // Busca jogos em destaque com filtros de qualidade
+  const searchPromises = featuredGameNames.map((gameName) => {
+    const url = buildQualityFilteredURL({
+      search: encodeURIComponent(gameName),
+      page_size: 1,
+    });
+
+    return fetch(url)
       .then((response) => response.json())
-      .then((data) => data.results[0])
-      .catch(() => null)
-  );
+      .then((data) => {
+        const games = filterGamesByQuality(data.results || []);
+        return games[0] || null;
+      })
+      .catch(() => null);
+  });
 
   Promise.all(searchPromises)
     .then((games) => {
@@ -644,13 +806,23 @@ function createFeaturedGameCard(game, genres) {
       game.name
     )}`;
 
+  const metacritic = game.metacritic || null;
+  const rating = game.rating ? game.rating.toFixed(1) : "N/A";
+
+  // Badge de qualidade para jogos em destaque
+  let qualityIndicator = "";
+  if (metacritic) {
+    qualityIndicator = `<span class="badge bg-success position-absolute top-0 end-0 m-2">Meta: ${metacritic}</span>`;
+  }
+
   return `
     <div class="col-lg-4 col-md-6">
       <div class="featured-game-card" style="opacity: 0; transform: translateY(20px); transition: all 0.6s ease-out;">
-        <div class="game-image">
+        <div class="game-image position-relative">
           <img src="${gameImage}" alt="${
     game.name
   }" onerror="this.src='https://via.placeholder.com/400x250/1a0033/00ffff?text=Jogo'">
+          ${qualityIndicator}
           <div class="game-overlay">
             <div class="play-button" onclick="goToGameInCatalog('${
               game.name
@@ -659,11 +831,21 @@ function createFeaturedGameCard(game, genres) {
         </div>
         <div class="game-info">
           <h3 class="game-title">${game.name}</h3>
+          <div class="quality-info mb-2">
+            <span class="badge bg-info">${rating} ★</span>
+            ${
+              game.ratings_count
+                ? `<small class="text-muted ms-2">${game.ratings_count.toLocaleString(
+                    "pt-BR"
+                  )} avaliações</small>`
+                : ""
+            }
+          </div>
           <p class="game-description">
             ${
               game.description_raw
-                ? game.description_raw.substring(0, 100) + "..."
-                : "Jogo disponível no Orion Game Pass com gráficos incríveis e jogabilidade envolvente."
+                ? game.description_raw.substring(0, 120) + "..."
+                : "Jogo de alta qualidade disponível no Orion Game Pass com gráficos incríveis e jogabilidade envolvente."
             }
           </p>
           <div class="game-tags">
@@ -704,9 +886,9 @@ function goToGameInCatalog(gameName) {
     if (searchInput) {
       searchInput.value = gameName;
       currentSearchTerm = gameName;
-      const searchApiUrl = `https://api.rawg.io/api/games?key=${apiKey}&search=${encodeURIComponent(
-        gameName
-      )}&page_size=12`;
+      const searchApiUrl = buildQualityFilteredURL({
+        search: encodeURIComponent(gameName),
+      });
       handleNewSearch(searchApiUrl, `Resultados para: "${gameName}"`);
 
       // Scroll para o topo
@@ -722,12 +904,12 @@ function handleURLParameters() {
   const genreParam = urlParams.get("genre");
 
   if (searchParam && searchInput) {
-    // Se há um parâmetro de busca, executa a busca
+    // Se há um parâmetro de busca, executa a busca com filtros
     searchInput.value = searchParam;
     currentSearchTerm = searchParam;
-    const searchApiUrl = `https://api.rawg.io/api/games?key=${apiKey}&search=${encodeURIComponent(
-      searchParam
-    )}&page_size=12`;
+    const searchApiUrl = buildQualityFilteredURL({
+      search: encodeURIComponent(searchParam),
+    });
     handleNewSearch(searchApiUrl, `Resultados para: "${searchParam}"`);
     return true;
   } else if (genreParam && categoryItems.length > 0) {
@@ -760,12 +942,93 @@ function setupGenreLinks() {
         aventura: "adventure",
         corrida: "racing",
         multiplayer: "action", // fallback para multiplayer
+        estratégia: "strategy",
+        simulação: "simulation",
+        esportes: "sports",
       };
 
       const genre = genreMap[genreText] || "action";
       window.location.href = `catalogo.html?genre=${genre}`;
     });
   });
+}
+
+// --- FUNÇÃO PARA ADICIONAR FILTRO PERSONALIZADO DE QUALIDADE ---
+function addQualityFilterUI() {
+  const filterContainer = document.querySelector(".filters-section");
+  if (!filterContainer) return;
+
+  const qualityFilterHTML = `
+    <div class="quality-filter-section mb-3">
+      <h6 class="text-info mb-2">
+        <i class="fas fa-trophy me-2"></i>Filtros de Qualidade
+      </h6>
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label small">Metacritic Mín:</label>
+          <select class="form-select form-select-sm" id="metacritic-filter">
+            <option value="60">60+ (Bom)</option>
+            <option value="70">70+ (Muito Bom)</option>
+            <option value="80" selected>80+ (Excelente)</option>
+            <option value="90">90+ (Obra-prima)</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Rating Mín:</label>
+          <select class="form-select form-select-sm" id="rating-filter">
+            <option value="3.0">3.0+</option>
+            <option value="3.5" selected>3.5+</option>
+            <option value="4.0">4.0+</option>
+            <option value="4.5">4.5+</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Avaliações Mín:</label>
+          <select class="form-select form-select-sm" id="ratings-count-filter">
+            <option value="50">50+</option>
+            <option value="100" selected>100+</option>
+            <option value="500">500+</option>
+            <option value="1000">1000+</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-info btn-sm w-100 mt-4" onclick="applyQualityFilters()">
+            <i class="fas fa-filter me-1"></i>Aplicar Filtros
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  filterContainer.insertAdjacentHTML("afterbegin", qualityFilterHTML);
+}
+
+// --- FUNÇÃO PARA APLICAR FILTROS DE QUALIDADE PERSONALIZADOS ---
+function applyQualityFilters() {
+  const metacriticSelect = document.getElementById("metacritic-filter");
+  const ratingSelect = document.getElementById("rating-filter");
+  const ratingsCountSelect = document.getElementById("ratings-count-filter");
+
+  if (metacriticSelect && ratingSelect && ratingsCountSelect) {
+    QUALITY_FILTERS.MIN_METACRITIC = parseInt(metacriticSelect.value);
+    QUALITY_FILTERS.MIN_RATING = parseFloat(ratingSelect.value);
+    QUALITY_FILTERS.MIN_RATINGS_COUNT = parseInt(ratingsCountSelect.value);
+
+    // Recarrega os jogos com os novos filtros
+    if (currentSearchTerm) {
+      const searchApiUrl = buildQualityFilteredURL({
+        search: currentSearchTerm,
+      });
+      handleNewSearch(
+        searchApiUrl,
+        `Resultados filtrados para: "${currentSearchTerm}"`
+      );
+    } else {
+      loadCategoryGames(currentGenre);
+    }
+
+    showNotification("Filtros de qualidade aplicados!", "success");
+  }
 }
 
 // --- INICIALIZAÇÃO ---
@@ -776,11 +1039,14 @@ document.addEventListener("DOMContentLoaded", function () {
     setupGenreLinks();
   }
 
+  // Adiciona filtros de qualidade personalizados
+  addQualityFilterUI();
+
   // Carrega jogos do catálogo e verifica parâmetros da URL
   if (gamesContainer) {
     // Primeiro verifica se há parâmetros na URL
     if (!handleURLParameters()) {
-      // Se não há parâmetros, carrega jogos populares
+      // Se não há parâmetros, carrega jogos populares de qualidade
       loadInitialGames();
     }
   }
@@ -866,6 +1132,43 @@ document.addEventListener("DOMContentLoaded", function () {
       
       .play-button:hover {
         transform: scale(1.2);
+      }
+      
+      .quality-indicators {
+        font-size: 0.8rem;
+      }
+      
+      .quality-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .quality-filter-section {
+        background: rgba(26, 0, 51, 0.3);
+        border: 1px solid var(--purple);
+        border-radius: var(--border-radius);
+        padding: 15px;
+      }
+      
+      .quality-filter-section .form-select {
+        background-color: var(--card-bg);
+        border-color: var(--purple);
+        color: white;
+      }
+      
+      .quality-filter-section .form-select:focus {
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25);
+      }
+      
+      .badge.bg-success {
+        background-color: #28a745 !important;
+      }
+      
+      .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #000 !important;
       }
     </style>
   `;
