@@ -776,6 +776,24 @@ body::before {
   margin-bottom: 30px;
 }
 
+/* ===== VIEW OPTIONS ===== */
+.view-options {
+  display: flex;
+  gap: 10px;
+}
+
+.view-options .btn {
+  border-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+  transition: var(--transition);
+}
+
+.view-options .btn:hover {
+  background: var(--neon-cyan) !important;
+  color: var(--black) !important;
+  box-shadow: var(--glow) var(--neon-cyan);
+}
+
 /* ===== CARDS CUSTOMIZADOS (CATÁLOGO) ===== */
 .custom-card {
   background: var(--card-bg) !important;
@@ -852,7 +870,121 @@ body::before {
   margin-top: auto;
 }
 
-/* ===== PÁGINA DE PAGAMENTO ===== */
+/* ===== ESTILOS DA PÁGINA INDEX (EXTRAS) ===== */
+.genre-btn {
+  transition: var(--transition);
+  border-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+  padding: 10px 20px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.genre-btn:hover {
+  background: var(--neon-cyan) !important;
+  color: var(--black) !important;
+  transform: translateY(-3px);
+  box-shadow: var(--glow) var(--neon-cyan);
+}
+
+.stat-item {
+  padding: 20px;
+  transition: var(--transition);
+}
+
+.stat-item:hover {
+  transform: translateY(-5px);
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.stats-section {
+  border-top: 2px solid rgba(0, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(0, 255, 255, 0.2);
+}
+
+/* ===== ESTILOS DA PÁGINA DE ASSINATURA ===== */
+.benefits-section {
+  background: rgba(106, 13, 173, 0.05);
+  padding: 50px 0;
+  border-radius: var(--border-radius);
+  margin: 50px 0;
+}
+
+.benefit-card {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: var(--border-radius);
+  text-align: center;
+  border: 2px solid var(--purple);
+  transition: var(--transition);
+  height: 100%;
+}
+
+.benefit-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow) var(--neon-cyan);
+}
+
+.benefit-icon {
+  font-size: 3rem;
+  color: var(--neon-magenta);
+  margin-bottom: 20px;
+}
+
+.benefit-card h4 {
+  color: var(--neon-cyan);
+  margin-bottom: 15px;
+  font-weight: 700;
+}
+
+.benefit-card p {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.faq-section {
+  padding: 50px 0;
+}
+
+.accordion-item {
+  background: var(--card-bg) !important;
+  border: 2px solid var(--purple) !important;
+  margin-bottom: 10px !important;
+  border-radius: var(--border-radius) !important;
+  overflow: hidden;
+}
+
+.accordion-button {
+  background: transparent !important;
+  color: var(--text-color) !important;
+  border: none !important;
+  font-weight: 600;
+  padding: 20px !important;
+}
+
+.accordion-button:not(.collapsed) {
+  background: rgba(255, 0, 255, 0.1) !important;
+  color: var(--neon-magenta) !important;
+}
+
+.accordion-button:focus {
+  box-shadow: none !important;
+}
+
+.accordion-body {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: var(--text-muted) !important;
+  padding: 20px !important;
+  line-height: 1.6;
+}
+
+/* ===== ESTILOS DA PÁGINA DE PAGAMENTO ===== */
 .payment-section {
   padding: 60px 0;
   min-height: calc(100vh - 200px);
@@ -860,6 +992,190 @@ body::before {
   align-items: center;
 }
 
+.order-summary {
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background: var(--card-bg);
+  border: 2px solid var(--purple);
+  border-radius: var(--border-radius);
+  padding: 25px;
+}
+
+.plan-name {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.plan-price {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(45deg, var(--neon-magenta), var(--neon-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.benefit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.benefit-list li {
+  padding: 3px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.total-price {
+  font-size: 1.8rem;
+  background: linear-gradient(45deg, var(--neon-magenta), var(--neon-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.payment-option {
+  background: var(--card-bg);
+  border: 2px solid var(--purple);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.payment-option:hover,
+.payment-option.active {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow) var(--neon-cyan);
+}
+
+.payment-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.payment-icon {
+  font-size: 2rem;
+  color: var(--neon-magenta);
+  width: 50px;
+  text-align: center;
+}
+
+.payment-info h5 {
+  color: var(--text-color);
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.payment-info p {
+  color: var(--text-muted);
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+.payment-badge {
+  margin-left: auto;
+}
+
+.payment-details {
+  background: var(--card-bg);
+  border: 2px solid var(--purple);
+  border-radius: var(--border-radius);
+  padding: 30px;
+  display: none;
+}
+
+.payment-details.active {
+  display: block;
+}
+
+.qr-container {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: 20px;
+  display: inline-block;
+  margin: 20px 0;
+}
+
+/* Estilo para a imagem do QR Code ocupar o espaço */
+#qrcode img {
+  width: 100%;
+  height: auto;
+}
+
+.pix-code-section {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.security-card {
+  background: var(--card-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: var(--border-radius);
+  padding: 20px;
+}
+
+.form-control,
+.form-select {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border: 2px solid var(--purple) !important;
+  color: var(--text-color) !important;
+  border-radius: var(--border-radius) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25) !important;
+  color: var(--text-color) !important;
+}
+
+.form-label {
+  color: var(--text-color);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* ===== MENSAGENS DE ESTADO ===== */
+#no-games-message {
+  color: var(--text-muted);
+}
+
+.no-games-content {
+  padding: 40px;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--purple);
+}
+
+.no-games-content i {
+  color: var(--text-dark) !important;
+}
+
+/* ===== LOADING INDICATOR ===== */
+#loading-indicator {
+  color: var(--text-color) !important;
+}
+
+.spinner-border {
+  border-color: var(--neon-cyan) !important;
+  border-right-color: transparent !important;
+}
+
+/* ===== QR CODE CONTAINER COM ANIMAÇÃO ===== */
 .qr-container {
   background: var(--card-bg);
   border: 2px solid var(--neon-cyan);
@@ -942,11 +1258,6 @@ body::before {
   text-shadow: 0 0 5px var(--neon-cyan);
 }
 
-/* ===== LOADING INDICATOR ===== */
-#loading-indicator {
-  color: var(--text-color) !important;
-}
-
 /* ===== SCROLLBAR CUSTOMIZADA ===== */
 ::-webkit-scrollbar {
   width: 10px;
@@ -1001,6 +1312,29 @@ body::before {
     flex-direction: column;
     text-align: center;
   }
+
+  .payment-header {
+    gap: 15px;
+  }
+
+  .payment-icon {
+    font-size: 1.5rem;
+    width: 40px;
+  }
+
+  .qr-container {
+    padding: 15px;
+  }
+
+  .view-options {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .view-options .btn {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
 }
 
 @media (max-width: 576px) {
@@ -1014,6 +1348,26 @@ body::before {
 
   .price {
     font-size: 2rem;
+  }
+
+  .custom-title {
+    font-size: 1.8rem;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .subscription-card .card-header {
+    padding: 20px;
+  }
+
+  .subscription-card .card-body {
+    padding: 20px;
   }
 }
 
@@ -1043,6 +1397,76 @@ body::before {
   animation-delay: 0.2s;
 }
 
+/* ===== CLASSES DE UTILIDADE ===== */
 .text-muted {
-  color: var(--neon-cyan) !important ;
+  color: var(--neon-cyan) !important;
+}
+
+/* ===== ESTILOS PARA BADGES E LABELS ===== */
+.badge {
+  font-family: "Orbitron", monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.bg-success {
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+}
+
+.bg-warning {
+  background: linear-gradient(45deg, #ffc107, #fd7e14) !important;
+}
+
+.bg-info {
+  background: linear-gradient(
+    45deg,
+    var(--neon-cyan),
+    var(--neon-magenta)
+  ) !important;
+}
+
+/* ===== ESTILOS PARA ALERTS ===== */
+.alert {
+  background: var(--card-bg) !important;
+  border: 2px solid var(--purple) !important;
+  color: var(--text-color) !important;
+  border-radius: var(--border-radius) !important;
+}
+
+.alert-info {
+  border-color: var(--neon-cyan) !important;
+  background: rgba(0, 255, 255, 0.1) !important;
+}
+
+.alert-warning {
+  border-color: #ffc107 !important;
+  background: rgba(255, 193, 7, 0.1) !important;
+}
+
+.alert-success {
+  border-color: #28a745 !important;
+  background: rgba(40, 167, 69, 0.1) !important;
+}
+
+/* ===== ESTILOS FINAIS DE POLIMENTO ===== */
+.btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25) !important;
+}
+
+.input-group .btn {
+  border-radius: 0 var(--border-radius) var(--border-radius) 0 !important;
+}
+
+/* ===== ANIMAÇÃO DE LOADING ===== */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-border {
+  animation: spin 1s linear infinite;
 }
