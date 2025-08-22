@@ -1,203 +1,165 @@
-// Cole a sua chave da API da RAWG aqui
-const apiKey = "9d8f7b3b9c054b31ae12b147798d28ca";
+// ============================================================================
+// CONFIGURAÇÃO CENTRALIZADA
+// ============================================================================
+const CONFIG = {
+  API: {
+    KEY: "9d8f7b3b9c054b31ae12b147798d28ca",
+    BASE_URL: "https://api.rawg.io/api",
+    PAGE_SIZE: 12,
+    TIMEOUT: 10000,
+  },
 
-// --- CONFIGURAÇÕES DE FILTROS DE QUALIDADE ---
-const QUALITY_FILTERS = {
-  // Filtro mínimo de Metacritic (elimina jogos muito ruins)
-  MIN_METACRITIC: 60,
-  // Rating mínimo (1-5, elimina jogos mal avaliados)
-  MIN_RATING: 3.5,
-  // Número mínimo de avaliações (elimina jogos obscuros/asset flips)
-  MIN_RATINGS_COUNT: 100,
-  // Excluir plataformas móveis para evitar jogos casuais de baixa qualidade
-  EXCLUDE_MOBILE: true,
-  // Focar apenas em jogos mais recentes (últimos 15 anos)
-  MIN_YEAR: 2010,
+  QUALITY_FILTERS: {
+    MIN_METACRITIC: 60,
+    MIN_RATING: 3.5,
+    MIN_RATINGS_COUNT: 100,
+    MIN_YEAR: 2010,
+    EXCLUDE_MOBILE: true,
+    MAIN_PLATFORMS: [4, 187, 18, 1, 186, 7],
+  },
+
+  UI: {
+    ANIMATION_DELAY: 100,
+    SCROLL_THRESHOLD: 1000,
+    SCROLL_DEBOUNCE: 150,
+    NOTIFICATION_DURATION: 5000,
+  },
+
+  SUSPICIOUS_PATTERNS: [
+    /^[A-Z\s]+\d+$/i,
+    /simulator\s*\d*$/i,
+    /\b(asset|flip|quick|simple|basic)\b/i,
+    /^\w{1,3}\s*\d+$/i,
+  ],
 };
 
-// --- SELETORES DE ELEMENTOS HTML ---
-const gamesContainer = document.getElementById("game-cards-container");
-const searchForm = document.getElementById("search-form");
-const searchInput = document.getElementById("search-input");
-const categoryItems = document.querySelectorAll(".category-item");
-const catalogTitle = document.getElementById("catalog-title");
-const gameCountSpan = document.getElementById("game-count");
-const loadingIndicator = document.getElementById("loading-indicator");
-const noGamesMessage = document.getElementById("no-games-message");
-const gridViewBtn = document.getElementById("grid-view");
-const listViewBtn = document.getElementById("list-view");
+// ============================================================================
+// UTILITÁRIOS
+// ============================================================================
+const Utils = {
+  sanitizeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  },
 
-// --- VARIÁVEIS DE ESTADO PARA PAGINAÇÃO E SCROLL ---
-let currentUrl = ""; // Armazena a URL da próxima página a ser carregada
-let isLoading = false; // Impede múltiplos carregamentos ao mesmo tempo
-let currentViewMode = "grid"; // 'grid' ou 'list'
-let currentSearchTerm = "";
-let currentGenre = "popular";
+  formatDate(date) {
+    return date ? new Date(date).toLocaleDateString("pt-BR") : "Não informado";
+  },
 
-// --- FUNÇÃO PARA CONSTRUIR URL COM FILTROS DE QUALIDADE ---
-function buildQualityFilteredURL(baseParams = {}) {
-  const params = new URLSearchParams({
-    key: apiKey,
-    page_size: 12,
-    // Ordena por rating ponderado (combina rating e popularidade)
-    ordering: "-rating,-ratings_count",
-    // Data mínima para jogos mais recentes
-    dates: `${
-      QUALITY_FILTERS.MIN_YEAR
-    }-01-01,${new Date().getFullYear()}-12-31`,
-    // Rating mínimo
-    rating: `${QUALITY_FILTERS.MIN_RATING},5`,
-    // Metacritic mínimo
-    metacritic: `${QUALITY_FILTERS.MIN_METACRITIC},100`,
-    ...baseParams,
-  });
+  formatRating(rating) {
+    return rating ? rating.toFixed(1) : "N/A";
+  },
 
-  // Exclui plataformas móveis se configurado
-  if (QUALITY_FILTERS.EXCLUDE_MOBILE) {
-    // IDs das principais plataformas (PC, PlayStation, Xbox, Nintendo)
-    params.set("platforms", "4,187,1,18,186,7,3,8,9,13,14,15,16,17,19,21");
-  }
+  formatNumber(num) {
+    return num ? num.toLocaleString("pt-BR") : "N/A";
+  },
 
-  return `https://api.rawg.io/api/games?${params.toString()}`;
-}
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  },
 
-// --- FUNÇÃO PARA FILTRAR JOGOS POR QUALIDADE (LADO CLIENTE) ---
-function filterGamesByQuality(games) {
-  return games.filter((game) => {
-    // Filtra por número mínimo de avaliações
-    if (
-      game.ratings_count &&
-      game.ratings_count < QUALITY_FILTERS.MIN_RATINGS_COUNT
-    ) {
-      return false;
-    }
+  isValidGame(game) {
+    return game && game.id && game.name && typeof game.name === "string";
+  },
 
-    // Filtra jogos sem rating
-    if (!game.rating || game.rating < QUALITY_FILTERS.MIN_RATING) {
-      return false;
-    }
+  isMobile() {
+    return window.innerWidth <= 768;
+  },
+};
 
-    // Filtra por Metacritic se disponível
-    if (game.metacritic && game.metacritic < QUALITY_FILTERS.MIN_METACRITIC) {
-      return false;
-    }
-
-    // Filtra jogos suspeitos (nomes muito genéricos ou com números aleatórios)
-    const suspiciousNamePatterns = [
-      /^[A-Z\s]+\d+$/i, // Nomes só com letras maiúsculas e números
-      /simulator\s*\d*$/i, // Simuladores genéricos
-      /\b(asset|flip|quick|simple|basic)\b/i, // Palavras comuns em asset flips
-      /^\w{1,3}\s*\d+$/i, // Nomes muito curtos com números
-    ];
-
-    if (suspiciousNamePatterns.some((pattern) => pattern.test(game.name))) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-// --- FUNÇÃO PARA CRIAR CARD DE JOGO (COM INDICADORES DE QUALIDADE) ---
-function createGameCard(game, index) {
-  const releaseDate = game.released
-    ? new Date(game.released).toLocaleDateString("pt-BR")
-    : "Não informado";
-  const rating = game.rating ? game.rating.toFixed(1) : "N/A";
-  const metacritic = game.metacritic || null;
-  const ratingsCount = game.ratings_count
-    ? game.ratings_count.toLocaleString("pt-BR")
-    : "N/A";
-
-  const genres = game.genres
-    ? game.genres
-        .slice(0, 2)
-        .map((g) => g.name)
-        .join(", ")
-    : "Variado";
-  const platforms = game.platforms
-    ? game.platforms
-        .slice(0, 3)
-        .map((p) => p.platform.name)
-        .join(", ")
-    : "Multiplataforma";
-
-  // Tratamento de imagem com fallback
-  const gameImage =
-    game.background_image ||
-    `https://via.placeholder.com/400x250/1a0033/00ffff?text=${encodeURIComponent(
-      game.name
-    )}`;
-
-  // Badge de qualidade baseado no Metacritic
-  let qualityBadge = "";
-  if (metacritic) {
-    let badgeClass = "bg-success";
-    let qualityText = "Excelente";
-
-    if (metacritic >= 90) {
-      badgeClass = "bg-success";
-      qualityText = "Obra-prima";
-    } else if (metacritic >= 80) {
-      badgeClass = "bg-success";
-      qualityText = "Excelente";
-    } else if (metacritic >= 70) {
-      badgeClass = "bg-info";
-      qualityText = "Muito Bom";
-    } else if (metacritic >= 60) {
-      badgeClass = "bg-warning";
-      qualityText = "Bom";
-    }
-
-    qualityBadge = `<span class="badge ${badgeClass} ms-1">${qualityText}</span>`;
-  }
-
-  if (currentViewMode === "list") {
+// ============================================================================
+// TEMPLATES HTML
+// ============================================================================
+const Templates = {
+  gameCardGrid(game, index = 0) {
+    const data = this.prepareGameData(game, index);
     return `
-      <div class="col-12 game-item" data-index="${index}">
+      <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 game-item" data-index="${data.index}">
+        <div class="card custom-card h-100">
+          <div class="position-relative">
+            <img src="${data.imageUrl}" 
+                 class="card-img-top custom-card-img" 
+                 alt="${data.safeName}"
+                 onerror="this.src='${data.fallbackImage}'">
+            <div class="position-absolute top-0 end-0 m-2">
+              <span class="badge bg-info">${data.formattedRating} ★</span>
+              ${data.qualityBadge}
+            </div>
+            ${data.metacriticBadge}
+            <div class="card-img-overlay d-flex align-items-center justify-content-center opacity-0 hover-overlay">
+              <button class="btn btn-primary btn-lg" onclick="GameApp.showGameDetails(${game.id})">
+                <i class="fas fa-play me-2"></i>Ver Detalhes
+              </button>
+            </div>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title custom-card-title">${data.safeName}</h5>
+            <div class="quality-info mb-2">
+              <small class="text-muted"><i class="fas fa-users me-1"></i>${data.formattedRatingsCount} avaliações</small>
+            </div>
+            <p class="card-text small text-muted mb-2">
+              <i class="fas fa-calendar me-1"></i>${data.formattedDate}
+            </p>
+            <p class="card-text small text-muted mb-3">
+              <i class="fas fa-gamepad me-1"></i>${data.genres}
+            </p>
+            <div class="mt-auto">
+              <div class="custom-card-price text-end">Disponível no Game Pass</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  gameCardList(game, index = 0) {
+    const data = this.prepareGameData(game, index);
+    return `
+      <div class="col-12 game-item" data-index="${data.index}">
         <div class="card custom-card-list h-100">
           <div class="row g-0 h-100">
             <div class="col-md-3">
-              <img src="${gameImage}" 
+              <img src="${data.imageUrl}" 
                    class="img-fluid rounded-start custom-card-img-list" 
-                   alt="${game.name}"
-                   onerror="this.src='https://via.placeholder.com/400x250/1a0033/00ffff?text=Jogo'">
+                   alt="${data.safeName}"
+                   onerror="this.src='${data.fallbackImage}'">
             </div>
             <div class="col-md-9">
               <div class="card-body d-flex flex-column h-100">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title custom-card-title mb-0">${
-                    game.name
-                  }</h5>
+                  <h5 class="card-title custom-card-title mb-0">${data.safeName}</h5>
                   <div class="d-flex align-items-center">
-                    <span class="badge bg-info">${rating} ★</span>
-                    ${qualityBadge}
+                    <span class="badge bg-info">${data.formattedRating} ★</span>
+                    ${data.qualityBadge}
                   </div>
                 </div>
                 
                 <div class="quality-indicators mb-2">
-                  ${
-                    metacritic
-                      ? `<small class="text-info me-3"><i class="fas fa-trophy me-1"></i>Metacritic: ${metacritic}</small>`
-                      : ""
-                  }
-                  <small class="text-muted"><i class="fas fa-users me-1"></i>${ratingsCount} avaliações</small>
+                  ${data.metacriticIndicator}
+                  <small class="text-muted"><i class="fas fa-users me-1"></i>${data.formattedRatingsCount} avaliações</small>
                 </div>
                 
                 <p class="card-text text-muted small mb-2">
-                  <i class="fas fa-calendar me-1"></i>Lançamento: ${releaseDate}
+                  <i class="fas fa-calendar me-1"></i>Lançamento: ${data.formattedDate}
                 </p>
                 <p class="card-text text-muted small mb-2">
-                  <i class="fas fa-gamepad me-1"></i>Gêneros: ${genres}
+                  <i class="fas fa-gamepad me-1"></i>Gêneros: ${data.genres}
                 </p>
                 <p class="card-text text-muted small mb-3">
-                  <i class="fas fa-desktop me-1"></i>Plataformas: ${platforms}
+                  <i class="fas fa-desktop me-1"></i>Plataformas: ${data.platforms}
                 </p>
                 <div class="mt-auto d-flex justify-content-between align-items-end">
                   <div class="custom-card-price">Disponível no Game Pass</div>
-                  <button class="btn btn-sm btn-outline-info" onclick="showGameDetails(${
-                    game.id
-                  })">
+                  <button class="btn btn-sm btn-outline-info" onclick="GameApp.showGameDetails(${game.id})">
                     <i class="fas fa-info-circle me-1"></i>Detalhes
                   </button>
                 </div>
@@ -207,400 +169,934 @@ function createGameCard(game, index) {
         </div>
       </div>
     `;
-  } else {
+  },
+
+  prepareGameData(game, index = 0) {
+    const safeName = Utils.sanitizeHTML(game.name);
+    const metacritic = parseInt(game.metacritic) || null;
+    const rating = Utils.formatRating(game.rating);
+
+    return {
+      index,
+      safeName,
+      formattedDate: Utils.formatDate(game.released),
+      formattedRating: rating,
+      formattedRatingsCount: Utils.formatNumber(game.ratings_count),
+      genres: game.genres
+        ? game.genres
+            .slice(0, 2)
+            .map((g) => g.name)
+            .join(", ")
+        : "Variado",
+      platforms: game.platforms
+        ? game.platforms
+            .slice(0, 3)
+            .map((p) => p.platform.name)
+            .join(", ")
+        : "Multiplataforma",
+      imageUrl: game.background_image || this.getFallbackImage(safeName),
+      fallbackImage: this.getFallbackImage(safeName),
+      qualityBadge: this.getQualityBadge(metacritic),
+      metacriticBadge: metacritic
+        ? `<div class="position-absolute top-0 start-0 m-2"><span class="badge bg-dark">Meta: ${metacritic}</span></div>`
+        : "",
+      metacriticIndicator: metacritic
+        ? `<small class="text-info me-3"><i class="fas fa-trophy me-1"></i>Metacritic: ${metacritic}</small>`
+        : "",
+    };
+  },
+
+  getFallbackImage(name) {
+    return `https://via.placeholder.com/400x250/1a0033/00ffff?text=${encodeURIComponent(
+      name
+    )}`;
+  },
+
+  getQualityBadge(metacritic) {
+    if (!metacritic) return "";
+
+    const badges = [
+      { score: 90, class: "bg-success", text: "Obra-prima" },
+      { score: 80, class: "bg-success", text: "Excelente" },
+      { score: 70, class: "bg-info", text: "Muito Bom" },
+      { score: 60, class: "bg-warning", text: "Bom" },
+    ];
+
+    for (const badge of badges) {
+      if (metacritic >= badge.score) {
+        return `<span class="badge ${badge.class} ms-1">${badge.text}</span>`;
+      }
+    }
+    return "";
+  },
+
+  errorMessage(message) {
     return `
-      <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 game-item" data-index="${index}">
-        <div class="card custom-card h-100">
-          <div class="position-relative">
-            <img src="${gameImage}" 
-                 class="card-img-top custom-card-img" 
-                 alt="${game.name}"
-                 onerror="this.src='https://via.placeholder.com/400x250/1a0033/00ffff?text=Jogo'">
-            <div class="position-absolute top-0 end-0 m-2">
-              <span class="badge bg-info">${rating} ★</span>
-              ${qualityBadge}
-            </div>
-            ${
-              metacritic
-                ? `<div class="position-absolute top-0 start-0 m-2">
-              <span class="badge bg-dark">Meta: ${metacritic}</span>
-            </div>`
-                : ""
-            }
-            <div class="card-img-overlay d-flex align-items-center justify-content-center opacity-0 hover-overlay">
-              <button class="btn btn-primary btn-lg" onclick="showGameDetails(${
-                game.id
-              })">
-                <i class="fas fa-play me-2"></i>Ver Detalhes
-              </button>
-            </div>
+      <div class="col-12">
+        <div class="alert alert-danger text-center">
+          <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+          <h4>Ops! Algo deu errado</h4>
+          <p class="mb-3">${Utils.sanitizeHTML(message)}</p>
+          <button class="btn btn-outline-light" onclick="GameApp.retryLastSearch()">
+            <i class="fas fa-redo me-2"></i>Tentar Novamente
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  noGamesMessage() {
+    return `
+      <div class="col-12">
+        <div class="text-center py-5">
+          <i class="fas fa-gamepad fa-4x text-muted mb-3"></i>
+          <h3 class="text-muted">Nenhum jogo de qualidade encontrado</h3>
+          <p class="text-muted">Tente buscar por outro termo ou categoria. Só mostramos jogos com boa avaliação!</p>
+        </div>
+      </div>
+    `;
+  },
+
+  loadingSpinner() {
+    return `
+      <div class="col-12 text-center">
+        <div class="spinner-border text-info" role="status">
+          <span class="visually-hidden">Carregando...</span>
+        </div>
+      </div>
+    `;
+  },
+};
+
+// ============================================================================
+// SERVIÇO DA API
+// ============================================================================
+class GameService {
+  constructor() {
+    this.apiKey = CONFIG.API.KEY;
+    this.baseUrl = CONFIG.API.BASE_URL;
+  }
+
+  buildURL(params = {}) {
+    console.log("Construindo URL com parâmetros:", params);
+
+    const defaultParams = {
+      key: CONFIG.API.KEY,
+      page_size: CONFIG.API.PAGE_SIZE,
+    };
+
+    // Ordenação
+    defaultParams.ordering = params.ordering || "-rating";
+
+    // Datas
+    defaultParams.dates = `${
+      CONFIG.QUALITY_FILTERS.MIN_YEAR
+    }-01-01,${new Date().getFullYear()}-12-31`;
+
+    // Metacritic - só aplica se não for busca por texto
+    if (!params.search) {
+      defaultParams.metacritic = `${CONFIG.QUALITY_FILTERS.MIN_METACRITIC},100`;
+    }
+
+    // Plataformas
+    if (
+      params.platforms &&
+      params.platforms !== "" &&
+      params.platforms !== "all"
+    ) {
+      defaultParams.platforms = params.platforms;
+    } else if (CONFIG.QUALITY_FILTERS.EXCLUDE_MOBILE) {
+      defaultParams.platforms = CONFIG.QUALITY_FILTERS.MAIN_PLATFORMS.join(",");
+    }
+
+    // Busca
+    if (params.search && params.search.trim()) {
+      defaultParams.search = params.search.trim();
+    }
+
+    // Gêneros
+    if (params.genres && params.genres !== "" && params.genres !== "popular") {
+      defaultParams.genres = params.genres;
+    }
+
+    // Página
+    if (params.page) {
+      defaultParams.page = params.page;
+    }
+
+    const url = `${CONFIG.API.BASE_URL}/games?${new URLSearchParams(
+      defaultParams
+    ).toString()}`;
+    console.log("URL construída:", url);
+
+    return url;
+  }
+
+  async fetchGames(url) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        CONFIG.API.TIMEOUT
+      );
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("Timeout: A requisição demorou muito para responder");
+      }
+      throw error;
+    }
+  }
+
+  async fetchGameDetails(gameId) {
+    const url = `${this.baseUrl}/games/${gameId}?key=${this.apiKey}`;
+    return this.fetchGames(url);
+  }
+
+  filterGamesByQuality(games) {
+    console.log("Filtrando jogos. Total recebido:", games.length);
+
+    const filtered = games.filter((game) => {
+      if (!Utils.isValidGame(game)) {
+        return false;
+      }
+
+      // Filtro de contagem de ratings
+      if (
+        game.ratings_count &&
+        game.ratings_count < CONFIG.QUALITY_FILTERS.MIN_RATINGS_COUNT
+      ) {
+        return false;
+      }
+
+      // Filtro de rating
+      if (game.rating && game.rating < CONFIG.QUALITY_FILTERS.MIN_RATING) {
+        return false;
+      }
+
+      // Metacritic opcional - só filtra se tiver metacritic
+      if (
+        game.metacritic &&
+        game.metacritic < CONFIG.QUALITY_FILTERS.MIN_METACRITIC
+      ) {
+        return false;
+      }
+
+      // Filtro de nomes suspeitos
+      if (
+        CONFIG.SUSPICIOUS_PATTERNS.some((pattern) => pattern.test(game.name))
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log("Jogos após filtro de qualidade:", filtered.length);
+    return filtered;
+  }
+}
+
+// ============================================================================
+// GERENCIADOR DE ESTADO
+// ============================================================================
+class StateManager {
+  constructor() {
+    this.state = {
+      currentUrl: "",
+      isLoading: false,
+      currentViewMode: "grid",
+      currentSearchTerm: "",
+      currentGenre: "popular",
+      lastSearchUrl: "",
+      lastSearchTitle: "",
+    };
+  }
+
+  setState(newState) {
+    this.state = { ...this.state, ...newState };
+  }
+
+  getState() {
+    return { ...this.state };
+  }
+
+  isLoading() {
+    return this.state.isLoading;
+  }
+
+  setLoading(loading) {
+    this.setState({ isLoading: loading });
+  }
+}
+
+// ============================================================================
+// GERENCIADOR DE UI
+// ============================================================================
+class UIManager {
+  constructor() {
+    this.elements = this.getElements();
+    this.setupEventListeners();
+  }
+
+  getElements() {
+    return {
+      gamesContainer: document.getElementById("game-cards-container"),
+      searchForm: document.getElementById("search-form"),
+      searchInput: document.getElementById("search-input"),
+      categoryItems: document.querySelectorAll(".category-item"),
+      catalogTitle: document.getElementById("catalog-title"),
+      gameCountSpan: document.getElementById("game-count"),
+      loadingIndicator: document.getElementById("loading-indicator"),
+      noGamesMessage: document.getElementById("no-games-message"),
+      gridViewBtn: document.getElementById("grid-view"),
+      listViewBtn: document.getElementById("list-view"),
+      sortSelect: document.getElementById("sortSelect"),
+      platformSelect: document.getElementById("platformSelect"),
+    };
+  }
+
+  setupEventListeners() {
+    // Event listeners serão configurados pelo GameApp
+  }
+
+  showLoading() {
+    if (this.elements.loadingIndicator) {
+      this.elements.loadingIndicator.style.display = "block";
+    }
+  }
+
+  hideLoading() {
+    if (this.elements.loadingIndicator) {
+      this.elements.loadingIndicator.style.display = "none";
+    }
+  }
+
+  showNoGamesMessage() {
+    if (this.elements.noGamesMessage) {
+      this.elements.noGamesMessage.style.display = "block";
+    } else if (this.elements.gamesContainer) {
+      this.elements.gamesContainer.innerHTML = Templates.noGamesMessage();
+    }
+  }
+
+  hideNoGamesMessage() {
+    if (this.elements.noGamesMessage) {
+      this.elements.noGamesMessage.style.display = "none";
+    }
+  }
+
+  clearGamesContainer() {
+    if (this.elements.gamesContainer) {
+      this.elements.gamesContainer.innerHTML = "";
+    }
+  }
+
+  updateGameCount(count) {
+    if (this.elements.gameCountSpan) {
+      this.elements.gameCountSpan.textContent = `(${Utils.formatNumber(
+        count
+      )} jogos de qualidade encontrados)`;
+    }
+  }
+
+  updateCatalogTitle(title) {
+    if (this.elements.catalogTitle) {
+      // Preserva o span de contagem
+      const gameCountSpan =
+        this.elements.catalogTitle.querySelector("#game-count") ||
+        this.elements.gameCountSpan;
+      this.elements.catalogTitle.innerHTML = `${title} `;
+      if (gameCountSpan) {
+        this.elements.catalogTitle.appendChild(gameCountSpan);
+      }
+    }
+  }
+
+  addGameCards(games, viewMode) {
+    if (!this.elements.gamesContainer) return;
+
+    const template =
+      viewMode === "list" ? Templates.gameCardList : Templates.gameCardGrid;
+
+    games.forEach((game, index) => {
+      const gameCardHTML = template.call(Templates, game, index);
+      this.elements.gamesContainer.innerHTML += gameCardHTML;
+    });
+
+    this.addCardAnimations();
+  }
+
+  addCardAnimations() {
+    const newCards = document.querySelectorAll(".game-item:not(.animated)");
+    newCards.forEach((card, index) => {
+      card.classList.add("animated");
+      card.style.opacity = "0";
+      card.style.transform = "translateY(20px)";
+
+      setTimeout(() => {
+        card.style.transition = "all 0.6s ease-out";
+        card.style.opacity = "1";
+        card.style.transform = "translateY(0)";
+      }, index * CONFIG.UI.ANIMATION_DELAY);
+    });
+  }
+
+  showError(message) {
+    if (this.elements.gamesContainer) {
+      this.elements.gamesContainer.innerHTML = Templates.errorMessage(message);
+    }
+  }
+
+  updateViewButtons(mode) {
+    if (this.elements.gridViewBtn && this.elements.listViewBtn) {
+      this.elements.gridViewBtn.classList.toggle("btn-info", mode === "grid");
+      this.elements.gridViewBtn.classList.toggle(
+        "btn-outline-info",
+        mode !== "grid"
+      );
+      this.elements.listViewBtn.classList.toggle("btn-info", mode === "list");
+      this.elements.listViewBtn.classList.toggle(
+        "btn-outline-info",
+        mode !== "list"
+      );
+    }
+  }
+
+  showNotification(message, type = "info") {
+    // Remove notificações existentes
+    const existingNotifications = document.querySelectorAll(
+      ".notification-toast"
+    );
+    existingNotifications.forEach((n) => n.remove());
+
+    const notificationHTML = `
+      <div class="position-fixed top-0 end-0 p-3 notification-toast" style="z-index: 2000;">
+        <div class="toast show" role="alert">
+          <div class="toast-header bg-${type} text-white">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong class="me-auto">Orion Game Pass</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
           </div>
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title custom-card-title">${game.name}</h5>
-            <div class="quality-info mb-2">
-              <small class="text-muted"><i class="fas fa-users me-1"></i>${ratingsCount} avaliações</small>
+          <div class="toast-body bg-dark text-light">
+            ${Utils.sanitizeHTML(message)}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", notificationHTML);
+
+    // Auto remove após duração configurada
+    setTimeout(() => {
+      const notification = document.querySelector(".notification-toast");
+      if (notification) {
+        notification.remove();
+      }
+    }, CONFIG.UI.NOTIFICATION_DURATION);
+
+    // Remove ao clicar no X
+    const closeBtn = document.querySelector(".notification-toast .btn-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        const notification = document.querySelector(".notification-toast");
+        if (notification) {
+          notification.remove();
+        }
+      });
+    }
+  }
+}
+
+// ============================================================================
+// APLICAÇÃO PRINCIPAL
+// ============================================================================
+class GameApp {
+  constructor() {
+    this.gameService = new GameService();
+    this.stateManager = new StateManager();
+    this.uiManager = new UIManager();
+    this.debouncedScroll = Utils.debounce(
+      this.handleScroll.bind(this),
+      CONFIG.UI.SCROLL_DEBOUNCE
+    );
+
+    this.init();
+  }
+
+  init() {
+    this.setupEventListeners();
+    this.handleURLParameters();
+    this.loadInitialContent();
+  }
+
+  setupEventListeners() {
+    const self = this;
+
+    // Busca
+    if (this.uiManager.elements.searchForm) {
+      this.uiManager.elements.searchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.handleSearch();
+      });
+    }
+
+    // Ordenação
+    if (this.uiManager.elements.sortSelect) {
+      this.uiManager.elements.sortSelect.addEventListener("change", (e) => {
+        console.log("Mudança de ordenação:", e.target.value);
+        this.handleSortChange(e.target.value);
+      });
+    }
+
+    // Plataforma
+    if (this.uiManager.elements.platformSelect) {
+      this.uiManager.elements.platformSelect.addEventListener("change", (e) => {
+        console.log("Mudança de plataforma:", e.target.value);
+        this.handlePlatformChange(e.target.value);
+      });
+    }
+
+    // Categorias
+    this.uiManager.elements.categoryItems.forEach((item) => {
+      item.addEventListener("click", () => this.handleCategoryClick(item));
+    });
+
+    // View modes
+    if (this.uiManager.elements.gridViewBtn) {
+      this.uiManager.elements.gridViewBtn.addEventListener("click", () =>
+        this.switchViewMode("grid")
+      );
+    }
+
+    if (this.uiManager.elements.listViewBtn) {
+      this.uiManager.elements.listViewBtn.addEventListener("click", () =>
+        this.switchViewMode("list")
+      );
+    }
+
+    // Scroll infinito
+    window.addEventListener("scroll", this.debouncedScroll);
+  }
+
+  handleSortChange(ordering) {
+    const { currentSearchTerm, currentGenre } = this.stateManager.getState();
+    const params = { ordering };
+
+    if (currentSearchTerm) {
+      params.search = currentSearchTerm;
+    }
+
+    if (currentGenre && currentGenre !== "popular") {
+      params.genres = currentGenre;
+    }
+
+    // Manter plataforma selecionada
+    if (
+      this.uiManager.elements.platformSelect?.value &&
+      this.uiManager.elements.platformSelect.value !== "all"
+    ) {
+      params.platforms = this.uiManager.elements.platformSelect.value;
+    }
+
+    const url = this.gameService.buildURL(params);
+    const sortText =
+      this.uiManager.elements.sortSelect.options[
+        this.uiManager.elements.sortSelect.selectedIndex
+      ].text;
+
+    this.handleNewSearch(url, `Ordenado por ${sortText}`);
+  }
+
+  handlePlatformChange(platform) {
+    const { currentSearchTerm, currentGenre } = this.stateManager.getState();
+    const params = {};
+
+    if (platform && platform !== "all") {
+      params.platforms = platform;
+    }
+
+    if (currentSearchTerm) {
+      params.search = currentSearchTerm;
+    }
+
+    if (currentGenre && currentGenre !== "popular") {
+      params.genres = currentGenre;
+    }
+
+    // Manter ordenação selecionada
+    if (this.uiManager.elements.sortSelect?.value) {
+      params.ordering = this.uiManager.elements.sortSelect.value;
+    }
+
+    const url = this.gameService.buildURL(params);
+    const title =
+      platform && platform !== "all"
+        ? "Filtrado por Plataforma"
+        : "Todos os Jogos";
+
+    this.handleNewSearch(url, title);
+  }
+
+  async fetchAndDisplayGames(apiUrl, isNewSearch = false) {
+    console.log("Buscando jogos com URL:", apiUrl);
+
+    if (this.stateManager.isLoading()) {
+      console.log("Já está carregando, aguardando...");
+      return;
+    }
+
+    this.stateManager.setLoading(true);
+    this.uiManager.showLoading();
+
+    if (isNewSearch) {
+      this.uiManager.clearGamesContainer();
+      this.uiManager.hideNoGamesMessage();
+    }
+
+    try {
+      const data = await this.gameService.fetchGames(apiUrl);
+      console.log(
+        "Resposta da API - Total de jogos:",
+        data.results?.length || 0
+      );
+
+      const filteredGames = this.gameService.filterGamesByQuality(
+        data.results || []
+      );
+      console.log("Jogos após filtros:", filteredGames.length);
+
+      if (isNewSearch) {
+        this.uiManager.updateGameCount(data.count || 0);
+      }
+
+      this.stateManager.setState({ currentUrl: data.next });
+
+      if (filteredGames.length === 0) {
+        if (isNewSearch) {
+          console.log("Nenhum jogo passou nos filtros, mostrando mensagem");
+          this.uiManager.showNoGamesMessage();
+        }
+      } else {
+        console.log("Adicionando jogos à interface:", filteredGames.length);
+        const { currentViewMode } = this.stateManager.getState();
+        this.uiManager.addGameCards(filteredGames, currentViewMode);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar jogos:", error);
+      if (isNewSearch) {
+        this.uiManager.showError(
+          error.message ||
+            "Não foi possível carregar os jogos. Verifique sua conexão e tente novamente."
+        );
+      }
+    } finally {
+      this.stateManager.setLoading(false);
+      this.uiManager.hideLoading();
+    }
+  }
+
+  handleSearch() {
+    const searchTerm = this.uiManager.elements.searchInput?.value.trim();
+    if (!searchTerm) return;
+
+    this.stateManager.setState({
+      currentSearchTerm: searchTerm,
+      currentGenre: "",
+    });
+
+    const searchApiUrl = this.gameService.buildURL({ search: searchTerm });
+    this.handleNewSearch(searchApiUrl, `Resultados para: "${searchTerm}"`);
+  }
+
+  handleCategoryClick(item) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    this.uiManager.elements.categoryItems.forEach((i) =>
+      i.classList.remove("active")
+    );
+    item.classList.add("active");
+
+    const genre = item.getAttribute("data-genre");
+    this.loadCategoryGames(genre);
+  }
+
+  handleScroll() {
+    const { currentUrl } = this.stateManager.getState();
+
+    if (
+      window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - CONFIG.UI.SCROLL_THRESHOLD &&
+      !this.stateManager.isLoading() &&
+      currentUrl
+    ) {
+      this.fetchAndDisplayGames(currentUrl);
+    }
+  }
+
+  handleNewSearch(url, title) {
+    this.stateManager.setState({
+      lastSearchUrl: url,
+      lastSearchTitle: title,
+    });
+    this.uiManager.updateCatalogTitle(title);
+    this.fetchAndDisplayGames(url, true);
+  }
+
+  loadCategoryGames(genre) {
+    this.stateManager.setState({
+      currentGenre: genre,
+      currentSearchTerm: "",
+    });
+
+    let apiUrl = "";
+    let genreName = "";
+
+    const categoryElement = document.querySelector(`[data-genre="${genre}"]`);
+    if (categoryElement) {
+      genreName = categoryElement.textContent;
+    }
+
+    if (genre === "popular") {
+      apiUrl = this.gameService.buildURL({
+        ordering: "-rating,-ratings_count,-added",
+      });
+    } else {
+      apiUrl = this.gameService.buildURL({
+        genres: genre,
+        ordering: "-rating,-metacritic",
+      });
+    }
+
+    this.handleNewSearch(apiUrl, genreName || "Jogos de Qualidade");
+  }
+
+  switchViewMode(mode) {
+    this.stateManager.setState({ currentViewMode: mode });
+    this.uiManager.updateViewButtons(mode);
+
+    const { currentSearchTerm, currentGenre } = this.stateManager.getState();
+
+    if (currentSearchTerm) {
+      const searchApiUrl = this.gameService.buildURL({
+        search: currentSearchTerm,
+      });
+      this.handleNewSearch(
+        searchApiUrl,
+        `Resultados para: "${currentSearchTerm}"`
+      );
+    } else {
+      this.loadCategoryGames(currentGenre);
+    }
+  }
+
+  retryLastSearch() {
+    const { lastSearchUrl, lastSearchTitle } = this.stateManager.getState();
+    if (lastSearchUrl && lastSearchTitle) {
+      this.handleNewSearch(lastSearchUrl, lastSearchTitle);
+    } else {
+      const { currentSearchTerm, currentGenre } = this.stateManager.getState();
+      if (currentSearchTerm) {
+        const searchApiUrl = this.gameService.buildURL({
+          search: currentSearchTerm,
+        });
+        this.handleNewSearch(
+          searchApiUrl,
+          `Resultados para: "${currentSearchTerm}"`
+        );
+      } else {
+        this.loadCategoryGames(currentGenre);
+      }
+    }
+  }
+
+  async showGameDetails(gameId) {
+    try {
+      this.createGameModal();
+      const game = await this.gameService.fetchGameDetails(gameId);
+      this.updateGameModal(game);
+    } catch (error) {
+      console.error("Erro ao carregar detalhes:", error);
+      this.showGameModalError();
+    }
+  }
+
+  createGameModal() {
+    const modalHTML = `
+      <div class="modal fade" id="gameDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title">
+                <i class="fas fa-spinner fa-spin me-2"></i>Carregando detalhes...
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <p class="card-text small text-muted mb-2">
-              <i class="fas fa-calendar me-1"></i>${releaseDate}
-            </p>
-            <p class="card-text small text-muted mb-3">
-              <i class="fas fa-gamepad me-1"></i>${genres}
-            </p>
-            <div class="mt-auto">
-              <div class="custom-card-price text-end">Disponível</div>
+            <div class="modal-body">
+              <div class="text-center">
+                <div class="spinner-border text-info" role="status">
+                  <span class="visually-hidden">Carregando...</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     `;
-  }
-}
 
-// --- FUNÇÃO PARA BUSCAR E EXIBIR JOGOS (MELHORADA COM FILTROS) ---
-// --- FUNÇÃO PARA BUSCAR E EXIBIR JOGOS (CORREÇÃO DO CONTADOR) ---
-function fetchAndDisplayGames(apiUrl, isNewSearch = false) {
-  if (isLoading) return;
-  isLoading = true;
+    const existingModal = document.getElementById("gameDetailsModal");
+    if (existingModal) {
+      existingModal.remove();
+    }
 
-  // Mostra indicador de carregamento
-  if (loadingIndicator) {
-    loadingIndicator.style.display = "block";
-  }
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-  // Esconde mensagem de "não encontrado" se estiver visível
-  if (noGamesMessage) {
-    noGamesMessage.style.display = "none";
-  }
-
-  // Se for uma nova busca, limpa o container
-  if (isNewSearch) {
-    gamesContainer.innerHTML = "";
-    if (gameCountSpan) {
-      gameCountSpan.textContent = "";
+    // Verificar se Bootstrap está disponível
+    if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      const modal = new bootstrap.Modal(
+        document.getElementById("gameDetailsModal")
+      );
+      modal.show();
+    } else {
+      // Fallback se Bootstrap não estiver carregado
+      document.getElementById("gameDetailsModal").style.display = "block";
+      document.getElementById("gameDetailsModal").classList.add("show");
     }
   }
 
-  fetch(apiUrl)
-    .then((response) => {
-      if (!response.ok) throw new Error(`Erro na API: ${response.status}`);
-      return response.json();
-    })
-    .then((data) => {
-      // Filtra jogos por qualidade no lado cliente
-      const filteredGames = filterGamesByQuality(data.results || []);
+  updateGameModal(game) {
+    const modalTitle = document.querySelector("#gameDetailsModal .modal-title");
+    const modalBody = document.querySelector("#gameDetailsModal .modal-body");
 
-      // CORREÇÃO: Atualiza o contador com o TOTAL de jogos encontrados pela API
-      // não apenas os que aparecem na tela atual
-      if (isNewSearch && gameCountSpan) {
-        // Usa o 'count' total da API, não o número de jogos filtrados da página atual
-        const totalGames = data.count || 0;
-        gameCountSpan.textContent = `(${totalGames.toLocaleString(
-          "pt-BR"
-        )} jogos de qualidade encontrados)`;
-      }
+    if (!modalTitle || !modalBody) return;
 
-      // Salva a URL da PRÓXIMA página de resultados
-      currentUrl = data.next;
+    modalTitle.innerHTML = `<i class="fas fa-gamepad me-2"></i>${Utils.sanitizeHTML(
+      game.name
+    )}`;
 
-      // Se não há jogos e é nova busca, mostra mensagem
-      if (filteredGames.length === 0 && isNewSearch) {
-        if (noGamesMessage) {
-          noGamesMessage.style.display = "block";
-        } else {
-          gamesContainer.innerHTML = `
-            <div class="col-12">
-              <div class="text-center py-5">
-                <i class="fas fa-gamepad fa-4x text-muted mb-3"></i>
-                <h3 class="text-muted">Nenhum jogo de qualidade encontrado</h3>
-                <p class="text-muted">Tente buscar por outro termo ou categoria. Só mostramos jogos com boa avaliação!</p>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      // Adiciona os novos cards ao container
-      filteredGames.forEach((game, index) => {
-        const gameCardHTML = createGameCard(game, index);
-        gamesContainer.innerHTML += gameCardHTML;
-      });
-
-      // Adiciona animações aos novos cards
-      addCardAnimations();
-
-      isLoading = false;
-      if (loadingIndicator) {
-        loadingIndicator.style.display = "none";
-      }
-    })
-    .catch((error) => {
-      console.error("Erro ao buscar os jogos:", error);
-
-      if (isNewSearch) {
-        gamesContainer.innerHTML = `
-          <div class="col-12">
-            <div class="alert alert-danger text-center">
-              <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
-              <h4>Ops! Algo deu errado</h4>
-              <p class="mb-3">Não foi possível carregar os jogos. Verifique sua conexão e tente novamente.</p>
-              <button class="btn btn-outline-light" onclick="retryLastSearch()">
-                <i class="fas fa-redo me-2"></i>Tentar Novamente
-              </button>
-            </div>
-          </div>
-        `;
-      }
-
-      isLoading = false;
-      if (loadingIndicator) {
-        loadingIndicator.style.display = "none";
-      }
-    });
-}
-// --- FUNÇÃO PARA ADICIONAR ANIMAÇÕES AOS CARDS ---
-function addCardAnimations() {
-  const newCards = document.querySelectorAll(".game-item:not(.animated)");
-  newCards.forEach((card, index) => {
-    card.classList.add("animated");
-    card.style.opacity = "0";
-    card.style.transform = "translateY(20px)";
-
-    setTimeout(() => {
-      card.style.transition = "all 0.6s ease-out";
-      card.style.opacity = "1";
-      card.style.transform = "translateY(0)";
-    }, index * 100);
-  });
-}
-
-// --- FUNÇÃO PARA LIDAR COM NOVA BUSCA ---
-function handleNewSearch(url, title) {
-  if (catalogTitle) {
-    catalogTitle.firstChild.textContent = title + " ";
-  }
-  fetchAndDisplayGames(url, true);
-}
-
-// --- FUNÇÃO PARA TENTAR NOVAMENTE A ÚLTIMA BUSCA ---
-function retryLastSearch() {
-  if (currentSearchTerm) {
-    const searchApiUrl = buildQualityFilteredURL({ search: currentSearchTerm });
-    handleNewSearch(searchApiUrl, `Resultados para: "${currentSearchTerm}"`);
-  } else {
-    loadCategoryGames(currentGenre);
-  }
-}
-
-// --- FUNÇÃO PARA CARREGAR JOGOS POR CATEGORIA (COM FILTROS DE QUALIDADE) ---
-function loadCategoryGames(genre) {
-  currentGenre = genre;
-  currentSearchTerm = "";
-
-  let apiUrl = "";
-  let genreName = "";
-
-  // Encontra o nome da categoria
-  const categoryElement = document.querySelector(`[data-genre="${genre}"]`);
-  if (categoryElement) {
-    genreName = categoryElement.textContent;
-  }
-
-  if (genre === "popular") {
-    // Para jogos populares, usa ordering por rating e popularidade
-    apiUrl = buildQualityFilteredURL({
-      ordering: "-rating,-ratings_count,-added",
-    });
-  } else {
-    // Para gêneros específicos
-    apiUrl = buildQualityFilteredURL({
-      genres: genre,
-      ordering: "-rating,-metacritic",
-    });
-  }
-
-  handleNewSearch(apiUrl, genreName || "Jogos de Qualidade");
-}
-
-// --- FUNÇÃO PARA ALTERNAR ENTRE VISUALIZAÇÕES ---
-function switchViewMode(mode) {
-  currentViewMode = mode;
-
-  // Atualiza botões ativos
-  if (gridViewBtn && listViewBtn) {
-    gridViewBtn.classList.toggle("btn-info", mode === "grid");
-    gridViewBtn.classList.toggle("btn-outline-info", mode !== "grid");
-    listViewBtn.classList.toggle("btn-info", mode === "list");
-    listViewBtn.classList.toggle("btn-outline-info", mode !== "list");
-  }
-
-  // Recarrega os jogos na nova visualização
-  if (currentSearchTerm) {
-    const searchApiUrl = buildQualityFilteredURL({ search: currentSearchTerm });
-    handleNewSearch(searchApiUrl, `Resultados para: "${currentSearchTerm}"`);
-  } else {
-    loadCategoryGames(currentGenre);
-  }
-}
-
-// --- FUNÇÃO PARA MOSTRAR DETALHES DO JOGO ---
-function showGameDetails(gameId) {
-  // Cria modal de detalhes
-  const modalHTML = `
-    <div class="modal fade" id="gameDetailsModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content bg-dark text-light">
-          <div class="modal-header border-secondary">
-            <h5 class="modal-title">
-              <i class="fas fa-spinner fa-spin me-2"></i>Carregando detalhes...
-            </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="text-center">
-              <div class="spinner-border text-info" role="status">
-                <span class="visually-hidden">Carregando...</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Remove modal existente se houver
-  const existingModal = document.getElementById("gameDetailsModal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  // Adiciona novo modal
-  document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-  // Mostra o modal
-  const modal = new bootstrap.Modal(
-    document.getElementById("gameDetailsModal")
-  );
-  modal.show();
-
-  // Busca detalhes do jogo
-  fetch(`https://api.rawg.io/api/games/${gameId}?key=${apiKey}`)
-    .then((response) => response.json())
-    .then((game) => {
-      const modalTitle = document.querySelector(
-        "#gameDetailsModal .modal-title"
-      );
-      const modalBody = document.querySelector("#gameDetailsModal .modal-body");
-
-      modalTitle.innerHTML = `<i class="fas fa-gamepad me-2"></i>${game.name}`;
-
-      const genres = game.genres
-        ? game.genres.map((g) => g.name).join(", ")
-        : "N/A";
-      const platforms = game.platforms
+    const gameData = {
+      genres: game.genres ? game.genres.map((g) => g.name).join(", ") : "N/A",
+      platforms: game.platforms
         ? game.platforms
             .slice(0, 4)
             .map((p) => p.platform.name)
             .join(", ")
-        : "N/A";
-      const developers = game.developers
+        : "N/A",
+      developers: game.developers
         ? game.developers.map((d) => d.name).join(", ")
-        : "N/A";
-      const publishers = game.publishers
+        : "N/A",
+      publishers: game.publishers
         ? game.publishers.map((p) => p.name).join(", ")
-        : "N/A";
-      const releaseDate = game.released
-        ? new Date(game.released).toLocaleDateString("pt-BR")
-        : "N/A";
-      const rating = game.rating ? game.rating.toFixed(1) : "N/A";
-      const metacritic = game.metacritic || "N/A";
-      const ratingsCount = game.ratings_count
-        ? game.ratings_count.toLocaleString("pt-BR")
-        : "N/A";
+        : "N/A",
+      releaseDate: Utils.formatDate(game.released),
+      rating: Utils.formatRating(game.rating),
+      metacritic: game.metacritic || "N/A",
+      ratingsCount: Utils.formatNumber(game.ratings_count),
+      description: game.description_raw
+        ? Utils.sanitizeHTML(game.description_raw.substring(0, 500))
+        : "Jogo de alta qualidade disponível no Orion Game Pass.",
+    };
 
-      modalBody.innerHTML = `
-        <div class="row">
-          <div class="col-md-4">
-            <img src="${
-              game.background_image ||
-              "https://via.placeholder.com/400x600/1a0033/00ffff?text=Jogo"
-            }" 
-                 class="img-fluid rounded" alt="${game.name}">
-          </div>
-          <div class="col-md-8">
-            <div class="game-details">
-              <div class="mb-3">
-                <h6 class="text-info">Avaliação de Qualidade:</h6>
-                <div class="d-flex align-items-center gap-3">
-                  <span class="badge bg-primary fs-6">${rating} ★</span>
-                  ${
-                    metacritic !== "N/A"
-                      ? `<span class="badge bg-success fs-6">Metacritic: ${metacritic}</span>`
-                      : ""
-                  }
-                  <small class="text-muted">${ratingsCount} avaliações</small>
-                </div>
+    modalBody.innerHTML = `
+      <div class="row">
+        <div class="col-md-4">
+          <img src="${
+            game.background_image || Templates.getFallbackImage(game.name)
+          }" 
+               class="img-fluid rounded" 
+               alt="${Utils.sanitizeHTML(game.name)}"
+               onerror="this.src='${Templates.getFallbackImage(game.name)}'">
+        </div>
+        <div class="col-md-8">
+          <div class="game-details">
+            <div class="mb-3">
+              <h6 class="text-info">Avaliação de Qualidade:</h6>
+              <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-primary fs-6">${gameData.rating} ★</span>
+                ${
+                  gameData.metacritic !== "N/A"
+                    ? `<span class="badge bg-success fs-6">Metacritic: ${gameData.metacritic}</span>`
+                    : ""
+                }
+                <small class="text-muted">${
+                  gameData.ratingsCount
+                } avaliações</small>
               </div>
-              
-              <div class="mb-3">
-                <h6 class="text-info">Data de Lançamento:</h6>
-                <p class="mb-0">${releaseDate}</p>
-              </div>
-              
-              <div class="mb-3">
-                <h6 class="text-info">Gêneros:</h6>
-                <p class="mb-0">${genres}</p>
-              </div>
-              
-              <div class="mb-3">
-                <h6 class="text-info">Plataformas:</h6>
-                <p class="mb-0">${platforms}</p>
-              </div>
-              
-              <div class="mb-3">
-                <h6 class="text-info">Desenvolvedores:</h6>
-                <p class="mb-0">${developers}</p>
-              </div>
-              
-              <div class="mb-3">
-                <h6 class="text-info">Distribuidores:</h6>
-                <p class="mb-0">${publishers}</p>
-              </div>
-              
-              ${
-                game.description_raw
-                  ? `
-                <div class="mb-3">
-                  <h6 class="text-info">Descrição:</h6>
-                  <p class="text-muted small" style="max-height: 150px; overflow-y: auto;">
-                    ${game.description_raw.substring(0, 500)}${
-                      game.description_raw.length > 500 ? "..." : ""
-                    }
-                  </p>
-                </div>
-              `
-                  : ""
-              }
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Data de Lançamento:</h6>
+              <p class="mb-0">${gameData.releaseDate}</p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Gêneros:</h6>
+              <p class="mb-0">${gameData.genres}</p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Plataformas:</h6>
+              <p class="mb-0">${gameData.platforms}</p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Desenvolvedores:</h6>
+              <p class="mb-0">${gameData.developers}</p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Distribuidores:</h6>
+              <p class="mb-0">${gameData.publishers}</p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-info">Descrição:</h6>
+              <p class="text-muted small" style="max-height: 150px; overflow-y: auto;">
+                ${gameData.description}${
+      game.description_raw && game.description_raw.length > 500 ? "..." : ""
+    }
+              </p>
             </div>
           </div>
         </div>
-        
-        <div class="text-center mt-4">
-          <button class="btn btn-success btn-lg" onclick="playGame('${
-            game.name
-          }')">
-            <i class="fas fa-play me-2"></i>Jogar Agora
-          </button>
-          <button class="btn btn-outline-info ms-2" onclick="addToWishlist('${
-            game.name
-          }')">
-            <i class="fas fa-heart me-2"></i>Favoritar
-          </button>
-        </div>
-      `;
-    })
-    .catch((error) => {
-      console.error("Erro ao carregar detalhes:", error);
-      const modalBody = document.querySelector("#gameDetailsModal .modal-body");
+      </div>
+      
+      <div class="text-center mt-4">
+        <button class="btn btn-success btn-lg" onclick="GameApp.playGame('${Utils.sanitizeHTML(
+          game.name
+        )}')">
+          <i class="fas fa-play me-2"></i>Jogar Agora
+        </button>
+        <button class="btn btn-outline-info ms-2" onclick="GameApp.addToWishlist('${Utils.sanitizeHTML(
+          game.name
+        )}')">
+          <i class="fas fa-heart me-2"></i>Favoritar
+        </button>
+      </div>
+    `;
+  }
+
+  showGameModalError() {
+    const modalTitle = document.querySelector("#gameDetailsModal .modal-title");
+    const modalBody = document.querySelector("#gameDetailsModal .modal-body");
+
+    if (modalTitle) {
+      modalTitle.innerHTML =
+        '<i class="fas fa-exclamation-triangle me-2"></i>Erro';
+    }
+
+    if (modalBody) {
       modalBody.innerHTML = `
         <div class="alert alert-danger text-center">
           <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
@@ -608,171 +1104,159 @@ function showGameDetails(gameId) {
           <p class="mb-0">Não foi possível carregar os detalhes do jogo. Tente novamente.</p>
         </div>
       `;
+    }
+  }
+
+  playGame(gameName) {
+    // Fechar modal se estiver usando Bootstrap
+    if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      const modal = bootstrap.Modal.getInstance(
+        document.getElementById("gameDetailsModal")
+      );
+      if (modal) {
+        modal.hide();
+      }
+    } else {
+      // Fallback
+      const modal = document.getElementById("gameDetailsModal");
+      if (modal) {
+        modal.style.display = "none";
+        modal.classList.remove("show");
+      }
+    }
+
+    this.uiManager.showNotification(`Iniciando ${gameName}...`, "success");
+
+    setTimeout(() => {
+      this.uiManager.showNotification(
+        "Jogo disponível no seu Game Pass!",
+        "info"
+      );
+    }, 2000);
+  }
+
+  addToWishlist(gameName) {
+    this.uiManager.showNotification(
+      `${gameName} foi adicionado aos seus favoritos!`,
+      "success"
+    );
+  }
+
+  handleURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get("search");
+    const genreParam = urlParams.get("genre");
+
+    if (searchParam && this.uiManager.elements.searchInput) {
+      this.uiManager.elements.searchInput.value = searchParam;
+      this.stateManager.setState({ currentSearchTerm: searchParam });
+      const searchApiUrl = this.gameService.buildURL({ search: searchParam });
+      this.handleNewSearch(searchApiUrl, `Resultados para: "${searchParam}"`);
+      return true;
+    } else if (genreParam && this.uiManager.elements.categoryItems.length > 0) {
+      const categoryElement = document.querySelector(
+        `[data-genre="${genreParam}"]`
+      );
+      if (categoryElement) {
+        this.uiManager.elements.categoryItems.forEach((item) =>
+          item.classList.remove("active")
+        );
+        categoryElement.classList.add("active");
+        this.loadCategoryGames(genreParam);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  loadInitialContent() {
+    // Carrega jogos em destaque se estivermos na página inicial
+    if (document.querySelector(".featured-games-section")) {
+      this.loadFeaturedGames();
+      this.setupGenreLinks();
+    }
+
+    // Carrega jogos do catálogo
+    if (this.uiManager.elements.gamesContainer) {
+      if (!this.handleURLParameters()) {
+        this.loadInitialGames();
+      }
+    }
+  }
+
+  loadInitialGames() {
+    const popularGamesUrl = this.gameService.buildURL({
+      ordering: "-rating,-ratings_count,-added",
     });
-}
+    this.handleNewSearch(popularGamesUrl, "Jogos Populares de Qualidade");
+  }
 
-// --- FUNÇÃO PARA "JOGAR" JOGO ---
-function playGame(gameName) {
-  // Simula início do jogo
-  const modal = bootstrap.Modal.getInstance(
-    document.getElementById("gameDetailsModal")
-  );
-  modal.hide();
+  async loadFeaturedGames() {
+    const featuredGamesContainer = document.querySelector(
+      ".featured-games-section .row"
+    );
+    if (!featuredGamesContainer) return;
 
-  // Mostra notificação
-  showNotification(`Iniciando ${gameName}...`, "success");
+    // CORRIGIDO: Buscar apenas 3 jogos específicos para página inicial
+    const featuredGameNames = [
+      "Grand Theft Auto V",
+      "God of War",
+      "Red Dead Redemption 2",
+    ];
 
-  setTimeout(() => {
-    showNotification("Jogo disponível no seu Game Pass!", "info");
-  }, 2000);
-}
+    featuredGamesContainer.innerHTML = Templates.loadingSpinner();
 
-// --- FUNÇÃO PARA ADICIONAR À WISHLIST ---
-function addToWishlist(gameName) {
-  showNotification(`${gameName} foi adicionado aos seus favoritos!`, "success");
-}
+    try {
+      const games = [];
 
-// --- FUNÇÃO PARA MOSTRAR NOTIFICAÇÕES ---
-function showNotification(message, type = "info") {
-  const notificationHTML = `
-    <div class="position-fixed top-0 end-0 p-3" style="z-index: 2000;">
-      <div class="toast show" role="alert">
-        <div class="toast-header bg-${type} text-white">
-          <i class="fas fa-info-circle me-2"></i>
-          <strong class="me-auto">Orion Game Pass</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body bg-dark text-light">
-          ${message}
-        </div>
-      </div>
-    </div>
-  `;
+      // Buscar jogos um por um para garantir ordem e qualidade
+      for (const gameName of featuredGameNames) {
+        try {
+          const url = this.gameService.buildURL({
+            search: encodeURIComponent(gameName),
+            page_size: 1,
+          });
+          const data = await this.gameService.fetchGames(url);
 
-  document.body.insertAdjacentHTML("beforeend", notificationHTML);
+          if (data.results && data.results.length > 0) {
+            const filteredGames = this.gameService.filterGamesByQuality(
+              data.results
+            );
+            if (filteredGames.length > 0) {
+              games.push(filteredGames[0]);
+            }
+          }
+        } catch (error) {
+          console.warn(`Erro ao buscar ${gameName}:`, error);
+        }
+      }
 
-  // Remove após 5 segundos
-  setTimeout(() => {
-    const notification = document.querySelector(".toast.show");
-    if (notification) {
-      notification.remove();
-    }
-  }, 5000);
-}
-
-// --- EVENTOS DE BUSCA ---
-if (searchForm) {
-  searchForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const searchTerm = searchInput.value.trim();
-    if (searchTerm) {
-      currentSearchTerm = searchTerm;
-      const searchApiUrl = buildQualityFilteredURL({ search: searchTerm });
-      handleNewSearch(searchApiUrl, `Resultados para: "${searchTerm}"`);
-    }
-  });
-}
-
-// --- EVENTOS DE CATEGORIA ---
-categoryItems.forEach((item) => {
-  item.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    categoryItems.forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
-
-    const genre = item.getAttribute("data-genre");
-    loadCategoryGames(genre);
-  });
-});
-
-// --- EVENTOS DE VISUALIZAÇÃO ---
-if (gridViewBtn) {
-  gridViewBtn.addEventListener("click", () => switchViewMode("grid"));
-}
-
-if (listViewBtn) {
-  listViewBtn.addEventListener("click", () => switchViewMode("list"));
-}
-
-// --- LÓGICA DO SCROLL INFINITO ---
-let scrollTimeout;
-window.addEventListener("scroll", () => {
-  clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    if (
-      window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 1000 &&
-      !isLoading &&
-      currentUrl
-    ) {
-      fetchAndDisplayGames(currentUrl);
-    }
-  }, 150);
-});
-
-// --- CARREGAMENTO INICIAL ---
-function loadInitialGames() {
-  const popularGamesUrl = buildQualityFilteredURL({
-    ordering: "-rating,-ratings_count,-added",
-  });
-  handleNewSearch(popularGamesUrl, "Jogos Populares de Qualidade");
-}
-
-// --- FUNÇÃO PARA BUSCAR JOGOS EM DESTAQUE (COM FILTROS) ---
-function loadFeaturedGames() {
-  const featuredGamesContainer = document.querySelector(
-    ".featured-games-section .row"
-  );
-  if (!featuredGamesContainer) return;
-
-  // Lista de jogos específicos para destacar (jogos conhecidamente bons)
-  const featuredGameNames = [
-    "Cyberpunk 2077",
-    "The Witcher 3",
-    "Red Dead Redemption 2",
-    "God of War",
-    "Horizon Zero Dawn",
-  ];
-
-  featuredGamesContainer.innerHTML = `
-    <div class="col-12 text-center mb-4">
-      <div class="spinner-border text-info" role="status">
-        <span class="visually-hidden">Carregando jogos em destaque...</span>
-      </div>
-    </div>
-  `;
-
-  // Busca jogos em destaque com filtros de qualidade
-  const searchPromises = featuredGameNames.map((gameName) => {
-    const url = buildQualityFilteredURL({
-      search: encodeURIComponent(gameName),
-      page_size: 1,
-    });
-
-    return fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        const games = filterGamesByQuality(data.results || []);
-        return games[0] || null;
-      })
-      .catch(() => null);
-  });
-
-  Promise.all(searchPromises)
-    .then((games) => {
       featuredGamesContainer.innerHTML = "";
 
-      games.forEach((game, index) => {
-        if (game) {
-          const genres = game.genres
-            ? game.genres.slice(0, 2).map((g) => g.name)
-            : ["RPG", "Ação"];
-          const gameCard = createFeaturedGameCard(game, genres);
-          featuredGamesContainer.innerHTML += gameCard;
-        }
+      // CORRIGIDO: Verificar se temos jogos para mostrar
+      if (games.length === 0) {
+        featuredGamesContainer.innerHTML = `
+          <div class="col-12 text-center">
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Não foi possível carregar os jogos em destaque.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Criar cards para os jogos encontrados
+      games.forEach((game) => {
+        const genres = game.genres
+          ? game.genres.slice(0, 2).map((g) => g.name)
+          : ["RPG", "Ação"];
+        const gameCard = this.createFeaturedGameCard(game, genres);
+        featuredGamesContainer.innerHTML += gameCard;
       });
 
-      // Adiciona animações
+      // Adicionar animações
       setTimeout(() => {
         const cards = featuredGamesContainer.querySelectorAll(
           ".featured-game-card"
@@ -784,276 +1268,168 @@ function loadFeaturedGames() {
           }, index * 200);
         });
       }, 100);
-    })
-    .catch((error) => {
+    } catch (error) {
       console.error("Erro ao carregar jogos em destaque:", error);
       featuredGamesContainer.innerHTML = `
-      <div class="col-12 text-center">
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          Não foi possível carregar os jogos em destaque.
+        <div class="col-12 text-center">
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Não foi possível carregar os jogos em destaque.
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  createFeaturedGameCard(game, genres) {
+    const gameImage =
+      game.background_image || Templates.getFallbackImage(game.name);
+    const metacritic = game.metacritic || null;
+    const rating = Utils.formatRating(game.rating);
+    const safeName = Utils.sanitizeHTML(game.name);
+    const safeDescription = game.description_raw
+      ? Utils.sanitizeHTML(game.description_raw.substring(0, 120)) + "..."
+      : "Jogo de alta qualidade disponível no Orion Game Pass com gráficos incríveis e jogabilidade envolvente.";
+
+    const qualityIndicator = metacritic
+      ? `<span class="badge bg-success position-absolute top-0 end-0 m-2">Meta: ${metacritic}</span>`
+      : "";
+
+    return `
+      <div class="col-lg-4 col-md-6">
+        <div class="featured-game-card" style="opacity: 0; transform: translateY(20px); transition: all 0.6s ease-out;">
+          <div class="game-image position-relative">
+            <img src="${gameImage}" 
+                 alt="${safeName}" 
+                 onerror="this.src='${Templates.getFallbackImage(game.name)}'">
+            ${qualityIndicator}
+            <div class="game-overlay">
+              <div class="play-button" onclick="GameApp.goToGameInCatalog('${safeName.replace(
+                /'/g,
+                "\\'"
+              )}')">▶</div>
+            </div>
+          </div>
+          <div class="game-info">
+            <h3 class="game-title">${safeName}</h3>
+            <div class="quality-info mb-2">
+              <span class="badge bg-info">${rating} ★</span>
+              ${
+                game.ratings_count
+                  ? `<small class="text-muted ms-2">${Utils.formatNumber(
+                      game.ratings_count
+                    )} avaliações</small>`
+                  : ""
+              }
+            </div>
+            <p class="game-description">${safeDescription}</p>
+            <div class="game-tags">
+              ${genres
+                .map(
+                  (genre) =>
+                    `<span class="tag">${Utils.sanitizeHTML(genre)}</span>`
+                )
+                .join("")}
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-primary btn-sm me-2" onclick="GameApp.goToGameInCatalog('${safeName.replace(
+                /'/g,
+                "\\'"
+              )}')">
+                <i class="fas fa-search me-1"></i>Ver no Catálogo
+              </button>
+              <button class="btn btn-outline-info btn-sm" onclick="GameApp.showGameDetails(${
+                game.id
+              })">
+                <i class="fas fa-info-circle me-1"></i>Detalhes
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
-    });
-}
-
-// --- FUNÇÃO PARA CRIAR CARD DE JOGO EM DESTAQUE ---
-function createFeaturedGameCard(game, genres) {
-  const gameImage =
-    game.background_image ||
-    `https://via.placeholder.com/400x250/1a0033/00ffff?text=${encodeURIComponent(
-      game.name
-    )}`;
-
-  const metacritic = game.metacritic || null;
-  const rating = game.rating ? game.rating.toFixed(1) : "N/A";
-
-  // Badge de qualidade para jogos em destaque
-  let qualityIndicator = "";
-  if (metacritic) {
-    qualityIndicator = `<span class="badge bg-success position-absolute top-0 end-0 m-2">Meta: ${metacritic}</span>`;
   }
 
-  return `
-    <div class="col-lg-4 col-md-6">
-      <div class="featured-game-card" style="opacity: 0; transform: translateY(20px); transition: all 0.6s ease-out;">
-        <div class="game-image position-relative">
-          <img src="${gameImage}" alt="${
-    game.name
-  }" onerror="this.src='https://via.placeholder.com/400x250/1a0033/00ffff?text=Jogo'">
-          ${qualityIndicator}
-          <div class="game-overlay">
-            <div class="play-button" onclick="goToGameInCatalog('${
-              game.name
-            }')">▶</div>
-          </div>
-        </div>
-        <div class="game-info">
-          <h3 class="game-title">${game.name}</h3>
-          <div class="quality-info mb-2">
-            <span class="badge bg-info">${rating} ★</span>
-            ${
-              game.ratings_count
-                ? `<small class="text-muted ms-2">${game.ratings_count.toLocaleString(
-                    "pt-BR"
-                  )} avaliações</small>`
-                : ""
-            }
-          </div>
-          <p class="game-description">
-            ${
-              game.description_raw
-                ? game.description_raw.substring(0, 120) + "..."
-                : "Jogo de alta qualidade disponível no Orion Game Pass com gráficos incríveis e jogabilidade envolvente."
-            }
-          </p>
-          <div class="game-tags">
-            ${genres
-              .map((genre) => `<span class="tag">${genre}</span>`)
-              .join("")}
-          </div>
-          <div class="mt-3">
-            <button class="btn btn-primary btn-sm me-2" onclick="goToGameInCatalog('${
-              game.name
-            }')">
-              <i class="fas fa-search me-1"></i>Ver no Catálogo
-            </button>
-            <button class="btn btn-outline-info btn-sm" onclick="showGameDetails(${
-              game.id
-            })">
-              <i class="fas fa-info-circle me-1"></i>Detalhes
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// --- FUNÇÃO PARA IR PARA JOGO ESPECÍFICO NO CATÁLOGO ---
-function goToGameInCatalog(gameName) {
-  // Se estivermos na página inicial, redireciona para o catálogo com busca
-  if (
-    window.location.pathname.includes("index.html") ||
-    window.location.pathname === "/"
-  ) {
-    window.location.href = `catalogo.html?search=${encodeURIComponent(
-      gameName
-    )}`;
-  } else {
-    // Se já estivermos no catálogo, faz a busca diretamente
-    if (searchInput) {
-      searchInput.value = gameName;
-      currentSearchTerm = gameName;
-      const searchApiUrl = buildQualityFilteredURL({
-        search: encodeURIComponent(gameName),
-      });
-      handleNewSearch(searchApiUrl, `Resultados para: "${gameName}"`);
-
-      // Scroll para o topo
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-}
-
-// --- FUNÇÃO PARA LIDAR COM PARÂMETROS DA URL ---
-function handleURLParameters() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const searchParam = urlParams.get("search");
-  const genreParam = urlParams.get("genre");
-
-  if (searchParam && searchInput) {
-    // Se há um parâmetro de busca, executa a busca com filtros
-    searchInput.value = searchParam;
-    currentSearchTerm = searchParam;
-    const searchApiUrl = buildQualityFilteredURL({
-      search: encodeURIComponent(searchParam),
-    });
-    handleNewSearch(searchApiUrl, `Resultados para: "${searchParam}"`);
-    return true;
-  } else if (genreParam && categoryItems.length > 0) {
-    // Se há um parâmetro de gênero, seleciona a categoria
-    const categoryElement = document.querySelector(
-      `[data-genre="${genreParam}"]`
-    );
-    if (categoryElement) {
-      categoryItems.forEach((item) => item.classList.remove("active"));
-      categoryElement.classList.add("active");
-      loadCategoryGames(genreParam);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-// --- FUNÇÃO PARA DESTACAR GÊNEROS NA HOME ---
-function setupGenreLinks() {
-  // Adiciona links funcionais para os gêneros na página inicial
-  const genreButtons = document.querySelectorAll(".tag");
-  genreButtons.forEach((button) => {
-    button.style.cursor = "pointer";
-    button.addEventListener("click", function () {
-      const genreText = this.textContent.trim().toLowerCase();
-      let genreMap = {
-        rpg: "role-playing-games-rpg",
-        ação: "action",
-        aventura: "adventure",
-        corrida: "racing",
-        multiplayer: "action", // fallback para multiplayer
-        estratégia: "strategy",
-        simulação: "simulation",
-        esportes: "sports",
-      };
-
-      const genre = genreMap[genreText] || "action";
-      window.location.href = `catalogo.html?genre=${genre}`;
-    });
-  });
-}
-
-// --- FUNÇÃO PARA ADICIONAR FILTRO PERSONALIZADO DE QUALIDADE ---
-function addQualityFilterUI() {
-  const filterContainer = document.querySelector(".filters-section");
-  if (!filterContainer) return;
-
-  const qualityFilterHTML = `
-    <div class="quality-filter-section mb-3">
-      <h6 class="text-info mb-2">
-        <i class="fas fa-trophy me-2"></i>Filtros de Qualidade
-      </h6>
-      <div class="row g-2">
-        <div class="col-md-3">
-          <label class="form-label small">Metacritic Mín:</label>
-          <select class="form-select form-select-sm" id="metacritic-filter">
-            <option value="60">60+ (Bom)</option>
-            <option value="70">70+ (Muito Bom)</option>
-            <option value="80" selected>80+ (Excelente)</option>
-            <option value="90">90+ (Obra-prima)</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small">Rating Mín:</label>
-          <select class="form-select form-select-sm" id="rating-filter">
-            <option value="3.0">3.0+</option>
-            <option value="3.5" selected>3.5+</option>
-            <option value="4.0">4.0+</option>
-            <option value="4.5">4.5+</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small">Avaliações Mín:</label>
-          <select class="form-select form-select-sm" id="ratings-count-filter">
-            <option value="50">50+</option>
-            <option value="100" selected>100+</option>
-            <option value="500">500+</option>
-            <option value="1000">1000+</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <button class="btn btn-info btn-sm w-100 mt-4" onclick="applyQualityFilters()">
-            <i class="fas fa-filter me-1"></i>Aplicar Filtros
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  filterContainer.insertAdjacentHTML("afterbegin", qualityFilterHTML);
-}
-
-// --- FUNÇÃO PARA APLICAR FILTROS DE QUALIDADE PERSONALIZADOS ---
-function applyQualityFilters() {
-  const metacriticSelect = document.getElementById("metacritic-filter");
-  const ratingSelect = document.getElementById("rating-filter");
-  const ratingsCountSelect = document.getElementById("ratings-count-filter");
-
-  if (metacriticSelect && ratingSelect && ratingsCountSelect) {
-    QUALITY_FILTERS.MIN_METACRITIC = parseInt(metacriticSelect.value);
-    QUALITY_FILTERS.MIN_RATING = parseFloat(ratingSelect.value);
-    QUALITY_FILTERS.MIN_RATINGS_COUNT = parseInt(ratingsCountSelect.value);
-
-    // Recarrega os jogos com os novos filtros
-    if (currentSearchTerm) {
-      const searchApiUrl = buildQualityFilteredURL({
-        search: currentSearchTerm,
-      });
-      handleNewSearch(
-        searchApiUrl,
-        `Resultados filtrados para: "${currentSearchTerm}"`
-      );
+  goToGameInCatalog(gameName) {
+    if (
+      window.location.pathname.includes("index.html") ||
+      window.location.pathname === "/"
+    ) {
+      window.location.href = `catalogo.html?search=${encodeURIComponent(
+        gameName
+      )}`;
     } else {
-      loadCategoryGames(currentGenre);
+      if (this.uiManager.elements.searchInput) {
+        this.uiManager.elements.searchInput.value = gameName;
+        this.stateManager.setState({ currentSearchTerm: gameName });
+        const searchApiUrl = this.gameService.buildURL({ search: gameName });
+        this.handleNewSearch(searchApiUrl, `Resultados para: "${gameName}"`);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
+  }
 
-    showNotification("Filtros de qualidade aplicados!", "success");
+  setupGenreLinks() {
+    const genreButtons = document.querySelectorAll(".tag");
+    genreButtons.forEach((button) => {
+      button.style.cursor = "pointer";
+      button.addEventListener("click", () => {
+        const genreText = button.textContent.trim().toLowerCase();
+        const genreMap = {
+          rpg: "role-playing-games-rpg",
+          ação: "action",
+          aventura: "adventure",
+          corrida: "racing",
+          multiplayer: "action",
+          estratégia: "strategy",
+          simulação: "simulation",
+          esportes: "sports",
+        };
+
+        const genre = genreMap[genreText] || "action";
+        window.location.href = `catalogo.html?genre=${genre}`;
+      });
+    });
+  }
+
+  // Métodos estáticos para serem chamados pelo HTML
+  static instance = null;
+
+  static getInstance() {
+    if (!GameApp.instance) {
+      GameApp.instance = new GameApp();
+    }
+    return GameApp.instance;
+  }
+
+  static showGameDetails(gameId) {
+    GameApp.getInstance().showGameDetails(gameId);
+  }
+
+  static playGame(gameName) {
+    GameApp.getInstance().playGame(gameName);
+  }
+
+  static addToWishlist(gameName) {
+    GameApp.getInstance().addToWishlist(gameName);
+  }
+
+  static retryLastSearch() {
+    GameApp.getInstance().retryLastSearch();
+  }
+
+  static goToGameInCatalog(gameName) {
+    GameApp.getInstance().goToGameInCatalog(gameName);
   }
 }
 
-// --- INICIALIZAÇÃO ---
-document.addEventListener("DOMContentLoaded", function () {
-  // Carrega jogos em destaque se estivermos na página inicial
-  if (document.querySelector(".featured-games-section")) {
-    loadFeaturedGames();
-    setupGenreLinks();
-  }
-
-  // Adiciona filtros de qualidade personalizados
-  addQualityFilterUI();
-
-  // Carrega jogos do catálogo e verifica parâmetros da URL
-  if (gamesContainer) {
-    // Primeiro verifica se há parâmetros na URL
-    if (!handleURLParameters()) {
-      // Se não há parâmetros, carrega jogos populares de qualidade
-      loadInitialGames();
-    }
-  }
-
-  // Adiciona estilos CSS adicionais para as novas funcionalidades
-  const additionalStyles = `
-    <style>
+// ============================================================================
+// ESTILOS ADICIONAIS
+// ============================================================================
+const AdditionalStyles = {
+  inject() {
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
       .custom-card-list {
         background: var(--card-bg) !important;
         border: 2px solid var(--purple) !important;
@@ -1087,7 +1463,7 @@ document.addEventListener("DOMContentLoaded", function () {
         transform: translateY(20px);
       }
       
-      .toast {
+      .notification-toast .toast {
         background: var(--card-bg) !important;
         border: 1px solid var(--neon-cyan) !important;
       }
@@ -1128,10 +1504,14 @@ document.addEventListener("DOMContentLoaded", function () {
       .play-button {
         cursor: pointer;
         transition: var(--transition);
+        font-size: 2rem;
+        color: white;
+        text-shadow: 0 0 10px var(--neon-cyan);
       }
       
       .play-button:hover {
         transform: scale(1.2);
+        color: var(--neon-cyan);
       }
       
       .quality-indicators {
@@ -1144,24 +1524,6 @@ document.addEventListener("DOMContentLoaded", function () {
         gap: 10px;
       }
       
-      .quality-filter-section {
-        background: rgba(26, 0, 51, 0.3);
-        border: 1px solid var(--purple);
-        border-radius: var(--border-radius);
-        padding: 15px;
-      }
-      
-      .quality-filter-section .form-select {
-        background-color: var(--card-bg);
-        border-color: var(--purple);
-        color: white;
-      }
-      
-      .quality-filter-section .form-select:focus {
-        border-color: var(--neon-cyan);
-        box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25);
-      }
-      
       .badge.bg-success {
         background-color: #28a745 !important;
       }
@@ -1170,25 +1532,140 @@ document.addEventListener("DOMContentLoaded", function () {
         background-color: #ffc107 !important;
         color: #000 !important;
       }
-    </style>
-  `;
+      
+      .spinner-border {
+        width: 3rem;
+        height: 3rem;
+      }
+      
+      /* Fallback para modal sem Bootstrap */
+      #gameDetailsModal.show {
+        display: block !important;
+        background: rgba(0,0,0,0.5);
+      }
+      
+      @media (max-width: 768px) {
+        .game-cards-container {
+          padding: 0 10px;
+        }
+        
+        .featured-game-card .btn {
+          font-size: 0.75rem;
+          padding: 4px 8px;
+        }
+        
+        .modal-dialog {
+          margin: 10px;
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+  },
+};
 
-  document.head.insertAdjacentHTML("beforeend", additionalStyles);
+// ============================================================================
+// FUNÇÃO DE DEBUG
+// ============================================================================
+window.debugGameFilters = function () {
+  console.log("=== DEBUG DOS FILTROS ===");
+
+  const gameApp = GameApp.getInstance();
+
+  // Testar elementos HTML
+  const sortSelect = document.getElementById("sortSelect");
+  const platformSelect = document.getElementById("platformSelect");
+
+  console.log("Elementos encontrados:");
+  console.log("- sortSelect:", !!sortSelect, sortSelect?.value);
+  console.log("- platformSelect:", !!platformSelect, platformSelect?.value);
+  console.log(
+    "- games container:",
+    !!document.getElementById("game-cards-container")
+  );
+
+  // Testar construção de URL
+  const testParams = {
+    ordering: "-rating",
+    platforms: "4",
+    search: "cyberpunk",
+  };
+
+  const testUrl = gameApp.gameService.buildURL(testParams);
+  console.log("URL de teste:", testUrl);
+
+  // Estado atual
+  const state = gameApp.stateManager.getState();
+  console.log("Estado atual:", state);
+
+  // Testar busca simples
+  console.log("Testando busca básica...");
+  const basicUrl = gameApp.gameService.buildURL({ ordering: "-rating" });
+  gameApp.fetchAndDisplayGames(basicUrl, true);
+};
+
+// ============================================================================
+// INICIALIZAÇÃO
+// ============================================================================
+document.addEventListener("DOMContentLoaded", function () {
+  console.log("DOM carregado, iniciando aplicação...");
+
+  try {
+    AdditionalStyles.inject();
+
+    // Aguardar elementos carregarem
+    setTimeout(() => {
+      const gameApp = GameApp.getInstance();
+      console.log("✅ Aplicação iniciada com sucesso!");
+
+      // Auto-debug se não houver jogos em 3 segundos (apenas em desenvolvimento)
+      setTimeout(() => {
+        const gamesContainer = document.getElementById("game-cards-container");
+        if (gamesContainer && gamesContainer.children.length === 0) {
+          console.warn("⚠️ Nenhum jogo carregado automaticamente.");
+        }
+      }, 3000);
+    }, 200);
+
+    // Tratamento de erros globais
+    window.addEventListener("error", function (e) {
+      console.error("Erro JavaScript:", e.error);
+
+      const gameApp = GameApp.getInstance();
+      if (gameApp?.uiManager) {
+        gameApp.uiManager.showNotification(
+          "Ocorreu um erro inesperado. Tente recarregar a página.",
+          "danger"
+        );
+      }
+    });
+
+    // Tratamento de promessas rejeitadas
+    window.addEventListener("unhandledrejection", function (e) {
+      console.error("Promise rejeitada:", e.reason);
+
+      const gameApp = GameApp.getInstance();
+      if (gameApp?.uiManager) {
+        gameApp.uiManager.showNotification(
+          "Erro de conexão. Verifique sua internet e tente novamente.",
+          "warning"
+        );
+      }
+
+      e.preventDefault();
+    });
+  } catch (error) {
+    console.error("Erro na inicialização:", error);
+
+    // Fallback caso a aplicação não carregue
+    document.body.innerHTML += `
+      <div class="position-fixed top-50 start-50 translate-middle text-center bg-dark p-4 rounded" style="z-index: 9999;">
+        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+        <h4 class="text-white">Erro na Aplicação</h4>
+        <p class="text-muted">Não foi possível inicializar a aplicação. Recarregue a página.</p>
+        <button class="btn btn-primary" onclick="location.reload()">
+          <i class="fas fa-refresh me-2"></i>Recarregar
+        </button>
+      </div>
+    `;
+  }
 });
-
-// --- TRATAMENTO DE ERROS GLOBAIS ---
-window.addEventListener("error", function (e) {
-  console.error("Erro JavaScript:", e.error);
-});
-
-// --- FUNÇÃO PARA DETECTAR DISPOSITIVOS MÓVEIS ---
-function isMobile() {
-  return window.innerWidth <= 768;
-}
-
-// --- OTIMIZAÇÃO PARA MOBILE ---
-if (isMobile()) {
-  // Reduz o número de jogos carregados por vez em mobile
-  const originalApiKey = apiKey;
-  // Você pode ajustar o page_size para mobile aqui se necessário
-}

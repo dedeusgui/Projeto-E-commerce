@@ -644,7 +644,7 @@ body::before {
 }
 
 /* ===== BUSCA ===== */
-.custom-search-input {
+.input-group .custom-search-input {
   background: rgba(0, 0, 0, 0.8) !important;
   border: 2px solid var(--neon-cyan) !important;
   border-right: none !important;
@@ -652,14 +652,17 @@ body::before {
   font-family: "Orbitron", monospace !important;
   font-weight: 500;
   transition: var(--transition);
-  border-radius: var(--border-radius) 0 0 var(--border-radius) !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-top-left-radius: var(--border-radius) !important;
+  border-bottom-left-radius: var(--border-radius) !important;
 }
 
-.custom-search-input::placeholder {
+.input-group .custom-search-input::placeholder {
   color: var(--text-muted) !important;
 }
 
-.custom-search-input:focus {
+.input-group .custom-search-input:focus {
   box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.3) !important;
   border-color: var(--neon-magenta) !important;
   background: rgba(0, 0, 0, 0.9) !important;
@@ -835,7 +838,11 @@ body::before {
   object-fit: cover;
   transition: var(--transition);
 }
-
+.custom-card-img-list {
+  height: 250px;
+  object-fit: cover;
+  transition: var(--transition);
+}
 .custom-card .card-body {
   padding: 20px !important;
   color: var(--text-color);
