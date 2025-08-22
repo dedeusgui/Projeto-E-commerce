@@ -89,9 +89,9 @@ const Templates = {
             <img src="${data.imageUrl}" 
                  class="card-img-top custom-card-img" 
                  alt="${data.safeName}"
-                 onerror="this.src='${data.fallbackImage}'">
+                 onerror="this.onerror=null; this.src='${data.fallbackImage}';">
             <div class="position-absolute top-0 end-0 m-2">
-              <span class="badge bg-info">${data.formattedRating} ★</span>
+              <span class="badge bg-info">${data.formattedRating} ⭐</span>
               ${data.qualityBadge}
             </div>
             ${data.metacriticBadge}
@@ -131,14 +131,14 @@ const Templates = {
               <img src="${data.imageUrl}" 
                    class="img-fluid rounded-start custom-card-img-list" 
                    alt="${data.safeName}"
-                   onerror="this.src='${data.fallbackImage}'">
+                   onerror="this.onerror=null; this.src='${data.fallbackImage}';">
             </div>
             <div class="col-md-9">
               <div class="card-body d-flex flex-column h-100">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <h5 class="card-title custom-card-title mb-0">${data.safeName}</h5>
                   <div class="d-flex align-items-center">
-                    <span class="badge bg-info">${data.formattedRating} ★</span>
+                    <span class="badge bg-info">${data.formattedRating} ⭐</span>
                     ${data.qualityBadge}
                   </div>
                 </div>
@@ -207,9 +207,99 @@ const Templates = {
   },
 
   getFallbackImage(name) {
-    return `https://via.placeholder.com/400x250/1a0033/00ffff?text=${encodeURIComponent(
-      name
-    )}`;
+    try {
+      // Tentar versão completa primeiro
+      const safeName = name.replace(/[^\w\s-]/g, "").substring(0, 25);
+
+      // Cores de gradiente baseadas no hash do nome
+      const gradients = [
+        ["#667eea", "#764ba2"],
+        ["#f093fb", "#f5576c"],
+        ["#4facfe", "#00f2fe"],
+        ["#43e97b", "#38f9d7"],
+        ["#fa709a", "#fee140"],
+        ["#a8edea", "#fed6e3"],
+        ["#ff9a9e", "#fecfef"],
+        ["#ffecd2", "#fcb69f"],
+      ];
+
+      // Hash simples para selecionar gradiente
+      const hash = safeName.length + (safeName.charCodeAt(0) || 0);
+      const [color1, color2] = gradients[hash % gradients.length];
+
+      // Usar Canvas em vez de SVG para evitar problemas com btoa
+      const canvas = document.createElement("canvas");
+      canvas.width = 400;
+      canvas.height = 250;
+      const ctx = canvas.getContext("2d");
+
+      // Criar gradiente
+      const gradient = ctx.createLinearGradient(0, 0, 400, 250);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
+
+      // Desenhar fundo
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 400, 250);
+
+      // Adicionar texto
+      ctx.fillStyle = "white";
+      ctx.font = "bold 16px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // Quebrar texto em linhas se for muito longo
+      const words = safeName.split(" ");
+      const lines = [];
+      let currentLine = words[0] || "";
+
+      for (let i = 1; i < words.length; i++) {
+        const testLine = currentLine + " " + words[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > 350 && currentLine !== "") {
+          lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      // Desenhar linhas de texto
+      const startY = 125 - (lines.length - 1) * 10;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, 200, startY + index * 20);
+      });
+
+      // Adicionar texto "Orion Game Pass"
+      ctx.font = "12px Arial, sans-serif";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.fillText("Orion Game Pass", 200, 180);
+
+      // Adicionar ícone de play simples
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.beginPath();
+      ctx.arc(200, 200, 15, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.moveTo(195, 195);
+      ctx.lineTo(195, 205);
+      ctx.lineTo(208, 200);
+      ctx.closePath();
+      ctx.fill();
+
+      // Retornar como data URL
+      return canvas.toDataURL("image/png");
+    } catch (error) {
+      console.warn(
+        "Erro ao criar fallback image, usando versão simples:",
+        error
+      );
+      // Fallback do fallback - imagem sólida simples
+      return this.getFallbackImageSimple(name);
+    }
   },
 
   getQualityBadge(metacritic) {
@@ -285,31 +375,32 @@ class GameService {
       page_size: CONFIG.API.PAGE_SIZE,
     };
 
-    // Ordenação
+    // Ordenação - usar o que foi passado ou padrão
     defaultParams.ordering = params.ordering || "-rating";
 
-    // Datas
+    // ⭐ SEMPRE aplicar filtros de qualidade básicos
     defaultParams.dates = `${
       CONFIG.QUALITY_FILTERS.MIN_YEAR
     }-01-01,${new Date().getFullYear()}-12-31`;
 
-    // Metacritic - só aplica se não for busca por texto
-    if (!params.search) {
+    // ⭐ SEMPRE aplicar filtro de Metacritic (exceto para buscas muito específicas)
+    if (!params.search || params.search.length < 5) {
       defaultParams.metacritic = `${CONFIG.QUALITY_FILTERS.MIN_METACRITIC},100`;
     }
 
-    // Plataformas
+    // ⭐ SEMPRE excluir plataformas mobile/fracas
     if (
       params.platforms &&
       params.platforms !== "" &&
       params.platforms !== "all"
     ) {
       defaultParams.platforms = params.platforms;
-    } else if (CONFIG.QUALITY_FILTERS.EXCLUDE_MOBILE) {
+    } else {
+      // SEMPRE aplicar filtro de plataformas principais
       defaultParams.platforms = CONFIG.QUALITY_FILTERS.MAIN_PLATFORMS.join(",");
     }
 
-    // Busca
+    // Busca por texto
     if (params.search && params.search.trim()) {
       defaultParams.search = params.search.trim();
     }
@@ -365,45 +456,125 @@ class GameService {
   }
 
   filterGamesByQuality(games) {
-    console.log("Filtrando jogos. Total recebido:", games.length);
+    console.log(
+      "🔍 Iniciando filtro de qualidade. Total recebido:",
+      games.length
+    );
 
-    const filtered = games.filter((game) => {
+    const filtered = games.filter((game, index) => {
+      // Log do jogo sendo analisado
+      if (index < 5) {
+        console.log(`Analisando jogo ${index + 1}:`, {
+          name: game.name,
+          rating: game.rating,
+          ratings_count: game.ratings_count,
+          metacritic: game.metacritic,
+          released: game.released,
+        });
+      }
+
+      // 1. Validação básica
       if (!Utils.isValidGame(game)) {
+        console.log("❌ Jogo inválido removido:", game?.name || "sem nome");
         return false;
       }
 
-      // Filtro de contagem de ratings
+      // 2. ⭐ FILTRO RIGOROSO: Contagem mínima de ratings
       if (
-        game.ratings_count &&
+        !game.ratings_count ||
         game.ratings_count < CONFIG.QUALITY_FILTERS.MIN_RATINGS_COUNT
       ) {
+        if (index < 10)
+          console.log(
+            `❌ Removido por poucos ratings (${game.ratings_count || 0}):`,
+            game.name
+          );
         return false;
       }
 
-      // Filtro de rating
-      if (game.rating && game.rating < CONFIG.QUALITY_FILTERS.MIN_RATING) {
+      // 3. ⭐ FILTRO RIGOROSO: Rating mínimo
+      if (!game.rating || game.rating < CONFIG.QUALITY_FILTERS.MIN_RATING) {
+        if (index < 10)
+          console.log(
+            `❌ Removido por rating baixo (${game.rating || 0}):`,
+            game.name
+          );
         return false;
       }
 
-      // Metacritic opcional - só filtra se tiver metacritic
+      // 4. ⭐ FILTRO ADICIONAL: Metacritic (se existir, deve ser bom)
       if (
-        game.metacritic &&
+        game.metacritic !== null &&
+        game.metacritic !== undefined &&
         game.metacritic < CONFIG.QUALITY_FILTERS.MIN_METACRITIC
       ) {
+        if (index < 10)
+          console.log(
+            `❌ Removido por Metacritic baixo (${game.metacritic}):`,
+            game.name
+          );
         return false;
       }
 
-      // Filtro de nomes suspeitos
+      // 5. ⭐ FILTRO ADICIONAL: Ano de lançamento
+      if (game.released) {
+        const releaseYear = new Date(game.released).getFullYear();
+        if (releaseYear < CONFIG.QUALITY_FILTERS.MIN_YEAR) {
+          if (index < 10)
+            console.log(
+              `❌ Removido por ano antigo (${releaseYear}):`,
+              game.name
+            );
+          return false;
+        }
+      }
+
+      // 6. ⭐ FILTRO ADICIONAL: Padrões suspeitos no nome
       if (
         CONFIG.SUSPICIOUS_PATTERNS.some((pattern) => pattern.test(game.name))
       ) {
+        if (index < 10)
+          console.log(`❌ Removido por nome suspeito:`, game.name);
         return false;
       }
 
+      // 7. ⭐ FILTRO ADICIONAL: Jogos com muito poucas informações
+      if (
+        !game.background_image &&
+        !game.genres?.length &&
+        !game.platforms?.length
+      ) {
+        if (index < 10)
+          console.log(`❌ Removido por falta de informações:`, game.name);
+        return false;
+      }
+
+      // Se passou por todos os filtros
+      if (index < 5) console.log(`✅ Jogo aprovado:`, game.name);
       return true;
     });
 
-    console.log("Jogos após filtro de qualidade:", filtered.length);
+    console.log(
+      `🎯 RESULTADO DO FILTRO: ${filtered.length} jogos de qualidade (de ${games.length} originais)`
+    );
+
+    // Se ainda estão passando muitos jogos, aplicar filtro adicional
+    if (filtered.length > 100) {
+      console.log(
+        "⚠️ Muitos jogos ainda passaram, aplicando filtro adicional..."
+      );
+
+      const extraFiltered = filtered.filter((game) => {
+        // Só jogos com rating muito bom E muitas avaliações
+        return game.rating >= 4.0 && game.ratings_count >= 500;
+      });
+
+      console.log(
+        `🔥 Filtro extra aplicado: ${extraFiltered.length} jogos premium`
+      );
+      return extraFiltered;
+    }
+
     return filtered;
   }
 }
@@ -694,11 +865,16 @@ class GameApp {
     const { currentSearchTerm, currentGenre } = this.stateManager.getState();
     const params = { ordering };
 
+    // Se há um termo de busca, prioriza a busca
     if (currentSearchTerm) {
       params.search = currentSearchTerm;
-    }
-
-    if (currentGenre && currentGenre !== "popular") {
+      // Não aplica filtro de gênero em buscas por texto
+    } else if (
+      currentGenre &&
+      currentGenre !== "popular" &&
+      currentGenre !== ""
+    ) {
+      // Aplica o gênero atual se não for popular e não estiver vazio
       params.genres = currentGenre;
     }
 
@@ -716,22 +892,42 @@ class GameApp {
         this.uiManager.elements.sortSelect.selectedIndex
       ].text;
 
-    this.handleNewSearch(url, `Ordenado por ${sortText}`);
+    // Determinar o título baseado no contexto atual
+    let title = `Ordenado por ${sortText}`;
+    if (currentSearchTerm) {
+      title = `"${currentSearchTerm}" - ${sortText}`;
+    } else if (currentGenre && currentGenre !== "popular") {
+      const activeCategory = document.querySelector(".category-item.active");
+      if (activeCategory) {
+        title = `${activeCategory.textContent} - ${sortText}`;
+      }
+    }
+
+    console.log("Sort Change - Params:", params);
+    console.log("Sort Change - URL:", url);
+
+    this.handleNewSearch(url, title);
   }
 
   handlePlatformChange(platform) {
     const { currentSearchTerm, currentGenre } = this.stateManager.getState();
     const params = {};
 
+    // Aplicar filtro de plataforma se não for "all"
     if (platform && platform !== "all") {
       params.platforms = platform;
     }
 
+    // Se há um termo de busca, prioriza a busca
     if (currentSearchTerm) {
       params.search = currentSearchTerm;
-    }
-
-    if (currentGenre && currentGenre !== "popular") {
+      // Não aplica filtro de gênero em buscas por texto
+    } else if (
+      currentGenre &&
+      currentGenre !== "popular" &&
+      currentGenre !== ""
+    ) {
+      // Aplica o gênero atual se não for popular e não estiver vazio
       params.genres = currentGenre;
     }
 
@@ -741,12 +937,56 @@ class GameApp {
     }
 
     const url = this.gameService.buildURL(params);
-    const title =
-      platform && platform !== "all"
-        ? "Filtrado por Plataforma"
-        : "Todos os Jogos";
+
+    // Determinar o título baseado no contexto atual
+    let title = "Jogos Filtrados";
+    if (currentSearchTerm) {
+      title = `Resultados para: "${currentSearchTerm}"`;
+    } else if (currentGenre && currentGenre !== "popular") {
+      const activeCategory = document.querySelector(".category-item.active");
+      if (activeCategory) {
+        title = activeCategory.textContent;
+      }
+    } else {
+      title = "Jogos Populares de Qualidade";
+    }
+
+    // Adicionar informação da plataforma ao título
+    if (platform && platform !== "all") {
+      const platformSelect = this.uiManager.elements.platformSelect;
+      const platformText =
+        platformSelect.options[platformSelect.selectedIndex].text;
+      title += ` - ${platformText}`;
+    }
+
+    console.log("Platform Change - Params:", params);
+    console.log("Platform Change - URL:", url);
 
     this.handleNewSearch(url, title);
+  }
+  handleCategoryClick(item) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Atualizar interface
+    this.uiManager.elements.categoryItems.forEach((i) =>
+      i.classList.remove("active")
+    );
+    item.classList.add("active");
+
+    const genre = item.getAttribute("data-genre");
+
+    // Resetar termo de busca quando seleciona categoria
+    this.stateManager.setState({
+      currentGenre: genre,
+      currentSearchTerm: "",
+    });
+
+    // Limpar campo de busca
+    if (this.uiManager.elements.searchInput) {
+      this.uiManager.elements.searchInput.value = "";
+    }
+
+    this.loadCategoryGames(genre);
   }
 
   async fetchAndDisplayGames(apiUrl, isNewSearch = false) {
@@ -811,27 +1051,33 @@ class GameApp {
     const searchTerm = this.uiManager.elements.searchInput?.value.trim();
     if (!searchTerm) return;
 
+    // Ao fazer uma busca, limpar seleção de categoria
+    this.uiManager.elements.categoryItems.forEach((item) =>
+      item.classList.remove("active")
+    );
+
     this.stateManager.setState({
       currentSearchTerm: searchTerm,
-      currentGenre: "",
+      currentGenre: "", // Limpar gênero ao buscar
     });
 
-    const searchApiUrl = this.gameService.buildURL({ search: searchTerm });
+    const params = { search: searchTerm };
+
+    // Manter filtros de plataforma e ordenação
+    if (
+      this.uiManager.elements.platformSelect?.value &&
+      this.uiManager.elements.platformSelect.value !== "all"
+    ) {
+      params.platforms = this.uiManager.elements.platformSelect.value;
+    }
+
+    if (this.uiManager.elements.sortSelect?.value) {
+      params.ordering = this.uiManager.elements.sortSelect.value;
+    }
+
+    const searchApiUrl = this.gameService.buildURL(params);
     this.handleNewSearch(searchApiUrl, `Resultados para: "${searchTerm}"`);
   }
-
-  handleCategoryClick(item) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
-    this.uiManager.elements.categoryItems.forEach((i) =>
-      i.classList.remove("active")
-    );
-    item.classList.add("active");
-
-    const genre = item.getAttribute("data-genre");
-    this.loadCategoryGames(genre);
-  }
-
   handleScroll() {
     const { currentUrl } = this.stateManager.getState();
 
@@ -860,24 +1106,50 @@ class GameApp {
       currentSearchTerm: "",
     });
 
-    let apiUrl = "";
+    const params = {};
     let genreName = "";
 
+    // Obter nome da categoria
     const categoryElement = document.querySelector(`[data-genre="${genre}"]`);
     if (categoryElement) {
       genreName = categoryElement.textContent;
     }
 
+    // Configurar parâmetros baseados no gênero
     if (genre === "popular") {
-      apiUrl = this.gameService.buildURL({
-        ordering: "-rating,-ratings_count,-added",
-      });
+      params.ordering = "-rating,-ratings_count,-added";
     } else {
-      apiUrl = this.gameService.buildURL({
-        genres: genre,
-        ordering: "-rating,-metacritic",
-      });
+      params.genres = genre;
+      params.ordering = "-rating,-metacritic";
     }
+
+    // Manter filtros de plataforma e ordenação se estiverem selecionados
+    if (
+      this.uiManager.elements.platformSelect?.value &&
+      this.uiManager.elements.platformSelect.value !== "all"
+    ) {
+      params.platforms = this.uiManager.elements.platformSelect.value;
+
+      // Adicionar plataforma ao título
+      const platformText =
+        this.uiManager.elements.platformSelect.options[
+          this.uiManager.elements.platformSelect.selectedIndex
+        ].text;
+      genreName += ` - ${platformText}`;
+    }
+
+    if (
+      this.uiManager.elements.sortSelect?.value &&
+      genre !== "popular" // Para popular, já definimos a ordenação específica
+    ) {
+      params.ordering = this.uiManager.elements.sortSelect.value;
+    }
+
+    const apiUrl = this.gameService.buildURL(params);
+
+    console.log("Category Load - Genre:", genre);
+    console.log("Category Load - Params:", params);
+    console.log("Category Load - URL:", apiUrl);
 
     this.handleNewSearch(apiUrl, genreName || "Jogos de Qualidade");
   }
