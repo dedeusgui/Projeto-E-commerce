@@ -128,10 +128,11 @@ const Templates = {
         <div class="card custom-card-list h-100">
           <div class="row g-0 h-100">
             <div class="col-md-3">
-              <img src="${data.imageUrl}" 
-                   class="img-fluid rounded-start custom-card-img-list" 
-                   alt="${data.safeName}"
-                   onerror="this.onerror=null; this.src='${data.fallbackImage}';">
+              <img src="${data.imageUrl}"
+     class="img-fluid rounded-start custom-card-img-list"
+     style="height: 250px; object-fit: cover; transition: var(--transition);"
+     alt="${data.safeName}"
+     onerror="this.onerror=null; this.src='${data.fallbackImage}';">
             </div>
             <div class="col-md-9">
               <div class="card-body d-flex flex-column h-100">
@@ -619,6 +620,8 @@ class UIManager {
   constructor() {
     this.elements = this.getElements();
     this.setupEventListeners();
+
+    this.themeManager = new ThemeManager();
   }
 
   getElements() {
@@ -1941,3 +1944,144 @@ document.addEventListener("DOMContentLoaded", function () {
     `;
   }
 });
+
+// ============================================================================
+// GERENCIADOR DE TEMA
+// ============================================================================
+class ThemeManager {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    // Detectar preferência do sistema ou tema salvo
+    this.loadTheme();
+
+    // Criar botão de tema
+    this.createThemeToggle();
+
+    // Escutar mudanças na preferência do sistema
+    this.watchSystemTheme();
+  }
+
+  getSystemTheme() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  getCurrentTheme() {
+    return document.documentElement.getAttribute("data-theme") || "dark";
+  }
+
+  loadTheme() {
+    // Verificar se há tema salvo no localStorage
+    const savedTheme = localStorage.getItem("orion-theme");
+
+    if (savedTheme) {
+      this.setTheme(savedTheme);
+    } else {
+      // Usar preferência do sistema
+      const systemTheme = this.getSystemTheme();
+      this.setTheme(systemTheme);
+    }
+  }
+
+  setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("orion-theme", theme);
+
+    // Atualizar meta theme-color para mobile
+    this.updateMetaThemeColor(theme);
+
+    // Disparar evento customizado para outros componentes
+    window.dispatchEvent(
+      new CustomEvent("themeChanged", { detail: { theme } })
+    );
+  }
+
+  updateMetaThemeColor(theme) {
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement("meta");
+      themeColorMeta.name = "theme-color";
+      document.head.appendChild(themeColorMeta);
+    }
+
+    const color = theme === "dark" ? "#0a0a0a" : "#f8f9fa";
+    themeColorMeta.content = color;
+  }
+
+  toggleTheme() {
+    const currentTheme = this.getCurrentTheme();
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    this.setTheme(newTheme);
+
+    // Feedback visual
+    this.animateToggle();
+  }
+
+  animateToggle() {
+    const button = document.querySelector(".theme-toggle");
+    if (button) {
+      button.style.transform = "scale(0.95)";
+      setTimeout(() => {
+        button.style.transform = "scale(1)";
+      }, 150);
+    }
+  }
+
+  createThemeToggle() {
+    // Remover botão existente se houver
+    const existingToggle = document.querySelector(".theme-toggle");
+    if (existingToggle) {
+      existingToggle.remove();
+    }
+
+    const themeToggle = document.createElement("button");
+    themeToggle.className = "theme-toggle";
+    themeToggle.setAttribute("aria-label", "Alternar tema claro/escuro");
+    themeToggle.setAttribute("title", "Alternar tema");
+
+    themeToggle.innerHTML = `
+      <div class="theme-icon sun">☀️</div>
+      <div class="theme-toggle-slider"></div>
+      <div class="theme-icon moon">🌙</div>
+    `;
+
+    themeToggle.addEventListener("click", () => {
+      this.toggleTheme();
+    });
+
+    // Adicionar ao DOM
+    document.body.appendChild(themeToggle);
+
+    // Animação de entrada
+    setTimeout(() => {
+      themeToggle.style.opacity = "1";
+      themeToggle.style.transform = "translateY(0)";
+    }, 100);
+  }
+
+  watchSystemTheme() {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    mediaQuery.addListener((e) => {
+      // Só atualizar automaticamente se não há preferência salva
+      if (!localStorage.getItem("orion-theme")) {
+        const systemTheme = e.matches ? "dark" : "light";
+        this.setTheme(systemTheme);
+      }
+    });
+  }
+
+  // Método para outros componentes verificarem o tema atual
+  isDarkTheme() {
+    return this.getCurrentTheme() === "dark";
+  }
+
+  isLightTheme() {
+    return this.getCurrentTheme() === "light";
+  }
+}
