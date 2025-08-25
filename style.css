@@ -461,7 +461,7 @@
 }
 
 :root[data-theme="light"] .btn-close-white {
-  filter: invert(1);
+  filter: none;
 }
 
 /* ===== AJUSTES PARA ALERTS NO TEMA CLARO ===== */
@@ -1395,9 +1395,11 @@ body::before {
 .custom-card {
   background: var(--card-bg) !important;
   backdrop-filter: blur(15px);
-  border: 2px solid var(--purple) !important;
+  border: 2px solid transparent;
   border-radius: var(--border-radius) !important;
-  transition: var(--transition);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   overflow: hidden;
   position: relative;
@@ -1418,7 +1420,7 @@ body::before {
 }
 
 .custom-card:hover {
-  transform: translateY(-8px) scale(1.03);
+  transform: scale(1.03);
   border-color: var(--neon-magenta) !important;
   box-shadow: var(--shadow), var(--glow) var(--neon-magenta);
 }
