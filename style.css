@@ -1331,8 +1331,6 @@ body::before {
   position: sticky;
   padding: 15px;
   top: 120px;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
 }
 
 .sidebar-title {
