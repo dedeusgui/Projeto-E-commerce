@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Pagamento - Orion Game Pass</title>
+    <link rel="icon" type="img/png" href="img/logo.png" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("orion-theme");
+
+          if (!theme) {
+            var prefersDark =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches;
+            theme = prefersDark ? "dark" : "light";
+          }
+
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="custom-header sticky-top">
+      <nav class="navbar navbar-expand-lg">
+        <div class="container-xl">
+          <a class="navbar-brand" href="index.html">
+            <div class="logo">
+              <img src="img/logo.png" alt="Logo Orion" class="img-fluid" />
+            </div>
+          </a>
+          <div class="navbar-text flex-grow-1 text-center">
+            <h1 class="header-title mb-0">FINALIZAR PAGAMENTO</h1>
+          </div>
+          <div class="d-flex gap-3 align-items-center">
+            <a href="assinatura.html" class="nav-link-custom">VOLTAR</a>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="payment-section">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="order-summary mb-4">
+              <h3 class="section-title text-center mb-4">Resumo do Pedido</h3>
+              <div class="summary-card">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-3"
+                >
+                  <div>
+                    <h5 class="plan-name" id="selected-plan">Plano Mensal</h5>
+                    <p class="plan-details text-muted" id="plan-description">
+                      Cobrança recorrente mensal
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    <span class="plan-price" id="plan-price">R$ 29,00</span>
+                    <small
+                      class="plan-period text-muted d-block"
+                      id="plan-period"
+                      >/mês</small
+                    >
+                  </div>
+                </div>
+
+                <div class="benefits-preview">
+                  <h6 class="text-info mb-2">✓ Incluído no seu plano:</h6>
+                  <ul class="benefit-list">
+                    <li>Acesso completo ao catálogo</li>
+                    <li>Jogos no dia de lançamento</li>
+                    <li>Descontos exclusivos</li>
+                    <li>Suporte prioritário</li>
+                  </ul>
+                </div>
+
+                <hr class="my-3" />
+
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong class="total-label">Total:</strong>
+                  <strong class="total-price" id="total-price">R$ 29,00</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="payment-methods">
+              <h3 class="section-title text-center mb-4">
+                Escolha o Método de Pagamento
+              </h3>
+
+              <div class="payment-options">
+                <div class="payment-option active" data-method="pix">
+                  <div class="payment-header">
+                    <div class="payment-icon">
+                      <i class="fas fa-qrcode"></i>
+                    </div>
+                    <div class="payment-info">
+                      <h5>PIX</h5>
+                      <p>Pagamento instantâneo e seguro</p>
+                    </div>
+                    <div class="payment-badge">
+                      <span class="badge bg-success">Recomendado</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="payment-option" data-method="credit">
+                  <div class="payment-header">
+                    <div class="payment-icon">
+                      <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="payment-info">
+                      <h5>Cartão de Crédito</h5>
+                      <p>Visa, MasterCard, Elo</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="payment-option" data-method="boleto">
+                  <div class="payment-header">
+                    <div class="payment-icon">
+                      <i class="fas fa-barcode"></i>
+                    </div>
+                    <div class="payment-info">
+                      <h5>Boleto Bancário</h5>
+                      <p>Vencimento em 3 dias úteis</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="payment-content">
+              <div class="payment-details active" id="pix-details">
+                <div class="text-center">
+                  <h4 class="mb-4">Pague com PIX</h4>
+                  <p class="text-muted mb-4">
+                    Escaneie o QR Code com o app do seu banco ou copie o código
+                    PIX
+                  </p>
+
+                  <div class="qr-container" id="qrcode-container">
+                    <div id="qrcode"></div>
+                  </div>
+
+                  <div class="pix-code-section mt-4">
+                    <label class="form-label">Código PIX (Copia e Cola):</label>
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="pix-code"
+                        value="00020126580014br.gov.bcb.pix013636c52c4e-8b8e-4e28-9d15-7b4f8c5f9e3a5204000053039865802BR5925ORION GAME PASS LTDA6009SAO PAULO62070503***6304A1B2"
+                        readonly
+                      />
+                      <button
+                        class="btn btn-outline-info"
+                        type="button"
+                        onclick="copyPixCode()"
+                      >
+                        <i class="fas fa-copy"></i> Copiar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="payment-status mt-4">
+                    <div class="alert alert-info">
+                      <i class="fas fa-clock me-2"></i>
+                      Aguardando pagamento... A confirmação é automática e
+                      instantânea.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="payment-details" id="credit-details">
+                <h4 class="mb-4">Dados do Cartão</h4>
+                <form id="credit-form">
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">Número do Cartão</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="1234 5678 9012 3456"
+                        maxlength="19"
+                      />
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label">Nome no Cartão</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="João Silva"
+                      />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">CVV</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="123"
+                        maxlength="3"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Validade</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="MM/AA"
+                        maxlength="5"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Parcelas</label>
+                      <select class="form-select">
+                        <option>1x sem juros</option>
+                        <option>2x sem juros</option>
+                        <option>3x sem juros</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn subscription-btn w-100 mt-4">
+                    Confirmar Pagamento
+                  </button>
+                </form>
+              </div>
+
+              <div class="payment-details" id="boleto-details">
+                <div class="text-center">
+                  <h4 class="mb-4">Boleto Bancário</h4>
+                  <p class="text-muted mb-4">
+                    O boleto será gerado após a confirmação e enviado por email
+                  </p>
+
+                  <div class="boleto-info">
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i>
+                      Vencimento: 3 dias úteis após a geração
+                    </div>
+                  </div>
+
+                  <button
+                    class="btn subscription-btn"
+                    onclick="generateBoleto()"
+                  >
+                    Gerar Boleto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="security-info mt-4">
+              <div class="security-card">
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-shield-alt text-success me-3"></i>
+                  <div>
+                    <h6 class="mb-1">Pagamento 100% Seguro</h6>
+                    <small class="text-muted"
+                      >Seus dados estão protegidos com criptografia SSL</small
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="custom-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p>&copy; 2025 Orion Game Pass - Pagamento Seguro e Confiável.</p>
+          <div class="footer-links">
+            <a href="#">Termos de Uso</a>
+            <a href="#">Privacidade</a>
+            <a href="#">Suporte</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <script>
+      // Detectar plano selecionado via URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const selectedPlan = urlParams.get("plan") || "mensal";
+
+      // Configurações dos planos
+      const plans = {
+        mensal: {
+          name: "Plano Mensal",
+          description: "Cobrança recorrente mensal",
+          price: "R$ 29,00",
+          period: "/mês",
+        },
+        trimestral: {
+          name: "Plano Trimestral",
+          description: "Pagamento a cada 3 meses",
+          price: "R$ 78,00",
+          period: "/3 meses",
+        },
+        anual: {
+          name: "Plano Anual",
+          description: "Pagamento anual com desconto",
+          price: "R$ 279,00",
+          period: "/ano",
+        },
+      };
+
+      // Atualizar informações do plano
+      function updatePlanInfo() {
+        const plan = plans[selectedPlan];
+        document.getElementById("selected-plan").textContent = plan.name;
+        document.getElementById("plan-description").textContent =
+          plan.description;
+        document.getElementById("plan-price").textContent = plan.price;
+        document.getElementById("plan-period").textContent = plan.period;
+        document.getElementById("total-price").textContent = plan.price;
+      }
+
+      // ✅ Função de gerar QR Code MODIFICADA
+      function generateQRCode() {
+        // Pega o código PIX do campo de input, que é o dado correto para o QR Code
+        const pixCode = document.getElementById("pix-code").value;
+        const qrCodeContainer = document.getElementById("qrcode");
+
+        // Limpa qualquer conteúdo anterior (importante se a função for chamada novamente)
+        qrCodeContainer.innerHTML = "";
+
+        // Define o tamanho da imagem
+        const size = "200x200";
+
+        // Codifica o texto do PIX para ser usado na URL
+        const encodedPixCode = encodeURIComponent(pixCode);
+
+        // Monta a URL da API
+        const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}&data=${encodedPixCode}&bgcolor=6a0dad&color=ffffff&qzone=1`;
+
+        // Cria um elemento de imagem
+        const qrImage = document.createElement("img");
+        qrImage.src = apiUrl;
+        qrImage.alt = "QR Code PIX";
+
+        // Adiciona a imagem ao container
+        qrCodeContainer.appendChild(qrImage);
+      }
+
+      // Copiar código PIX
+      function copyPixCode() {
+        const pixInput = document.getElementById("pix-code");
+        pixInput.select();
+        document.execCommand("copy");
+
+        // Feedback visual
+        const button = event.target.closest("button");
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        button.classList.add("btn-success");
+        button.classList.remove("btn-outline-info");
+
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.classList.remove("btn-success");
+          button.classList.add("btn-outline-info");
+        }, 2000);
+      }
+
+      // Alternar métodos de pagamento
+      document.querySelectorAll(".payment-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          // Remove active de todos
+          document
+            .querySelectorAll(".payment-option")
+            .forEach((opt) => opt.classList.remove("active"));
+          document
+            .querySelectorAll(".payment-details")
+            .forEach((detail) => detail.classList.remove("active"));
+
+          // Ativa o selecionado
+          option.classList.add("active");
+          const method = option.dataset.method;
+          document.getElementById(`${method}-details`).classList.add("active");
+        });
+      });
+
+      // Gerar boleto
+      function generateBoleto() {
+        alert("Boleto gerado com sucesso! Verifique seu email.");
+      }
+
+      // Inicializar página
+      document.addEventListener("DOMContentLoaded", () => {
+        updatePlanInfo();
+        generateQRCode();
+      });
+    </script>
+
+    <script src="script.js"></script>
+  </body>
+</html>
