@@ -2085,3 +2085,57 @@ class ThemeManager {
     return this.getCurrentTheme() === "light";
   }
 }
+
+// ===== 1. CURSOR PERSONALIZADO (VERSÃO APRIMORADA COM EFEITO DE TRILHA) =====
+document.addEventListener("DOMContentLoaded", () => {
+  const cursorDot = document.createElement("div");
+  cursorDot.className = "cursor-dot";
+  document.body.appendChild(cursorDot);
+
+  const cursorOutline = document.createElement("div");
+  cursorOutline.className = "cursor-outline";
+  document.body.appendChild(cursorOutline);
+
+  let mouseX = 0;
+  let mouseY = 0;
+  let outlineX = 0;
+  let outlineY = 0;
+  let isHovering = false;
+
+  // Função de animação para suavizar o movimento
+  const animateCursor = () => {
+    let distX = mouseX - outlineX;
+    let distY = mouseY - outlineY;
+
+    // A mágica do atraso: o outline se move apenas uma fração da distância a cada frame
+    outlineX += distX * 0.1;
+    outlineY += distY * 0.1;
+
+    cursorDot.style.transform = `translate(-50%, -50%) translate(${mouseX}px, ${mouseY}px)`;
+    cursorOutline.style.transform = `translate(-50%, -50%) translate(${outlineX}px, ${outlineY}px)`;
+
+    requestAnimationFrame(animateCursor);
+  };
+
+  window.addEventListener("mousemove", (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  const interactiveElements = document.querySelectorAll(
+    "a, button, .card, .payment-option"
+  );
+  interactiveElements.forEach((el) => {
+    el.addEventListener("mouseenter", () => {
+      document.body.classList.add("cursor-active");
+      isHovering = true;
+    });
+    el.addEventListener("mouseleave", () => {
+      document.body.classList.remove("cursor-active");
+      isHovering = false;
+    });
+  });
+
+  // Inicia a animação
+  requestAnimationFrame(animateCursor);
+});

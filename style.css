@@ -617,8 +617,61 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+/* ===== 1. CURSOR APRIMORADO (EFEITO LÍQUIDO) ===== */
+
+/* Garante que o cursor original nunca apareça */
+* {
+  cursor: none !important;
+}
+
+/* O ponto principal do cursor (o líder) */
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  background-color: var(--neon-cyan);
+  border-radius: 50%;
+  pointer-events: none; /* Impede que o cursor intercepte cliques */
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  box-shadow: 0 0 15px var(--neon-cyan), 0 0 25px var(--neon-cyan);
+  transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1),
+    width 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    height 0.3s cubic-bezier(0.19, 1, 0.22, 1), box-shadow 0.3s ease;
+}
+
+/* O contorno do cursor (o seguidor, que cria o efeito de trilha) */
+.cursor-outline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(0, 255, 255, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 9999; /* Fica atrás do ponto principal */
+  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    /* Animação mais lenta para o atraso */ width 0.4s
+      cubic-bezier(0.19, 1, 0.22, 1),
+    height 0.4s cubic-bezier(0.19, 1, 0.22, 1), border-color 0.4s ease,
+    opacity 0.4s ease;
+}
+
+/* EFEITO AO PASSAR SOBRE ELEMENTOS INTERATIVOS */
+.cursor-active .cursor-dot {
+  width: 70px; /* O ponto se expande dramaticamente */
+  height: 70px;
+  box-shadow: 0 0 30px var(--neon-magenta); /* A cor do brilho muda para magenta */
+  background-color: rgba(255, 0, 255, 0.2); /* Fica semi-transparente */
+}
+
+.cursor-active .cursor-outline {
+  opacity: 0; /* O contorno some para dar destaque à expansão do ponto */
+  transform: translate(-50%, -50%) scale(1.5); /* Expande e some */
 }
 
 body {
@@ -1278,8 +1331,6 @@ body::before {
   position: sticky;
   padding: 15px;
   top: 120px;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
 }
 
 .sidebar-title {
@@ -2072,4 +2123,274 @@ body::before {
 
 .spinner-border {
   animation: spin 1s linear infinite;
+}
+
+/* ===== GRADIENT ANIMATIONS - ADICIONAR AO FINAL DO CSS ===== */
+
+/* Animação de gradiente para o body */
+body {
+  background: radial-gradient(
+    ellipse at top,
+    #1a0033 0%,
+    #000000 70%
+  ) !important;
+  animation: backgroundShift 20s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundShift {
+  0% {
+    background: radial-gradient(
+      ellipse at top left,
+      #1a0033 0%,
+      #000000 70%
+    ) !important;
+  }
+  50% {
+    background: radial-gradient(
+      ellipse at center,
+      #0d1b2a 0%,
+      #1a0033 30%,
+      #000000 80%
+    ) !important;
+  }
+  100% {
+    background: radial-gradient(
+      ellipse at top right,
+      #1a0033 0%,
+      #415a77 20%,
+      #000000 70%
+    ) !important;
+  }
+}
+
+/* Animação nos títulos principais */
+.hero-main-title,
+.section-title {
+  background: linear-gradient(
+    45deg,
+    var(--neon-magenta),
+    var(--neon-cyan),
+    var(--neon-magenta),
+    var(--purple)
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientMove 4s ease-in-out infinite;
+}
+
+@keyframes gradientMove {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Animação nos botões principais */
+.custom-search-btn,
+.hero-btn-primary,
+.subscription-btn {
+  background: linear-gradient(
+    45deg,
+    var(--purple),
+    var(--purple-dark),
+    var(--neon-magenta),
+    var(--purple)
+  ) !important;
+  background-size: 400% 400% !important;
+  animation: buttonGradient 3s ease infinite;
+}
+
+@keyframes buttonGradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Tema claro - ajustes para gradient animations */
+:root[data-theme="light"] body {
+  animation: backgroundShiftLight 20s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundShiftLight {
+  0% {
+    background: linear-gradient(
+      135deg,
+      #e3f2fd 0%,
+      #f8f9fa 50%,
+      #e8f5e8 100%
+    ) !important;
+  }
+  50% {
+    background: linear-gradient(
+      135deg,
+      #f0f8ff 0%,
+      #e6f3ff 30%,
+      #f5f5f5 80%
+    ) !important;
+  }
+  100% {
+    background: linear-gradient(
+      135deg,
+      #e8f5e8 0%,
+      #f0f9ff 50%,
+      #faf0e6 100%
+    ) !important;
+  }
+}
+/* ===== BUTTON MORPHING - ADICIONAR APÓS OS GRADIENT ANIMATIONS ===== */
+
+/* Morphing para botões principais */
+.custom-search-btn,
+.hero-btn-primary,
+.hero-btn-secondary,
+.subscription-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+/* Efeito de onda no hover */
+.custom-search-btn::before,
+.hero-btn-primary::before,
+.hero-btn-secondary::before,
+.subscription-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.3) 0%,
+    transparent 70%
+  );
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Expansão da onda no hover */
+.custom-search-btn:hover::before,
+.hero-btn-primary:hover::before,
+.hero-btn-secondary:hover::before,
+.subscription-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Transformações principais no hover */
+.custom-search-btn:hover,
+.hero-btn-primary:hover,
+.subscription-btn:hover {
+  transform: translateY(-5px) scale(1.05);
+  border-width: 3px;
+  letter-spacing: 2px;
+  box-shadow: var(--glow) var(--neon-cyan), 0 15px 40px rgba(0, 255, 255, 0.4);
+}
+
+.hero-btn-secondary:hover {
+  transform: translateY(-5px) scale(1.05);
+  border-width: 3px;
+  letter-spacing: 2px;
+  box-shadow: var(--glow) var(--neon-magenta),
+    0 15px 40px rgba(255, 0, 255, 0.4);
+}
+
+/* Efeito de pulsação no active/click */
+.custom-search-btn:active,
+.hero-btn-primary:active,
+.hero-btn-secondary:active,
+.subscription-btn:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Morphing para botões de categoria */
+.category-item {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.category-item::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 255, 255, 0.2),
+    transparent
+  );
+  transition: all 0.6s ease;
+}
+
+.category-item:hover::after {
+  right: 100%;
+}
+
+.category-item:hover {
+  transform: translateX(15px) scale(1.02);
+  border-left-width: 6px;
+}
+
+/* Morphing para cards de jogo */
+.custom-card,
+.featured-game-card,
+.subscription-card {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.custom-card:hover,
+.featured-game-card:hover,
+.subscription-card:hover {
+  transform: translateY(-15px) scale(1.02) rotateX(5deg);
+  border-width: 3px;
+}
+
+/* Efeito especial para o botão de tema */
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: var(--glow) var(--neon-cyan), 0 10px 30px rgba(0, 255, 255, 0.3);
+}
+
+.theme-toggle:active {
+  transform: scale(0.9) rotate(-2deg);
+}
+
+/* Morphing para botões de view */
+.view-options .btn:hover {
+  transform: translateY(-3px) rotate(2deg);
+  border-width: 2px;
+  box-shadow: 0 8px 25px rgba(0, 255, 255, 0.3);
+}
+
+/* Ajustes para tema claro */
+:root[data-theme="light"] .custom-search-btn:hover,
+:root[data-theme="light"] .hero-btn-primary:hover,
+:root[data-theme="light"] .subscription-btn:hover {
+  box-shadow: var(--glow) rgba(106, 13, 173, 0.4),
+    0 15px 40px rgba(106, 13, 173, 0.3);
+}
+
+:root[data-theme="light"] .hero-btn-secondary:hover {
+  box-shadow: var(--glow) rgba(214, 51, 132, 0.4),
+    0 15px 40px rgba(214, 51, 132, 0.3);
 }
