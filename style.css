@@ -956,11 +956,20 @@ body::before {
   flex-wrap: wrap;
 }
 
+/* ===== HERO BUTTONS - RESPONSIVO ===== */
+.hero-buttons {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
 .hero-btn-primary,
 .hero-btn-secondary {
-  padding: 15px 30px;
+  padding: 0.875rem 2rem;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   border-radius: var(--border-radius);
   text-decoration: none;
   text-transform: uppercase;
@@ -968,6 +977,36 @@ body::before {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  min-width: 200px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-btn-primary {
+  background: linear-gradient(45deg, var(--purple), var(--purple-dark));
+  border: 2px solid var(--neon-magenta);
+  color: var(--text-color);
+}
+
+.hero-btn-primary:hover {
+  color: var(--black);
+  box-shadow: var(--glow) var(--neon-magenta);
+  transform: translateY(-3px);
+}
+
+.hero-btn-secondary {
+  background: transparent;
+  border: 2px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+.hero-btn-secondary:hover {
+  background: var(--neon-cyan);
+  color: var(--black);
+  box-shadow: var(--glow) var(--neon-cyan);
+  transform: translateY(-3px);
 }
 
 .hero-btn-primary {
@@ -1153,6 +1192,12 @@ body::before {
 }
 
 /* ===== CARDS DE ASSINATURA ===== */
+/* ===== SUBSCRIPTION CARDS - RESPONSIVO ===== */
+.subscription-section .row {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 1.5rem;
+}
+
 .subscription-card {
   background: var(--card-bg);
   border-radius: var(--border-radius);
@@ -1161,8 +1206,60 @@ body::before {
   border: 2px solid var(--purple);
   position: relative;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 450px;
 }
 
+.subscription-card .card-header {
+  padding: 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--purple);
+  flex-shrink: 0;
+}
+
+.subscription-card .card-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: space-between;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.subscription-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+  background: linear-gradient(45deg, var(--purple), var(--purple-dark));
+  border: 2px solid var(--neon-cyan);
+  color: var(--text-color);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.subscription-btn:hover {
+  background: linear-gradient(45deg, var(--neon-cyan), var(--neon-magenta));
+  color: var(--black);
+  box-shadow: var(--glow) var(--neon-cyan);
+  transform: translateY(-2px);
+}
 .subscription-card:hover {
   transform: translateY(-10px);
   border-color: var(--neon-magenta);
@@ -2393,4 +2490,103 @@ body {
 :root[data-theme="light"] .hero-btn-secondary:hover {
   box-shadow: var(--glow) rgba(214, 51, 132, 0.4),
     0 15px 40px rgba(214, 51, 132, 0.3);
+}
+
+/* Media query específico para 1024px */
+@media (min-width: 1024px) and (max-width: 1199.98px) {
+  /* Aumenta a largura dos cards de assinatura */
+  .subscription-card {
+    max-width: 600px !important;
+    width: 100% !important;
+    margin: 0 auto 20px auto !important;
+  }
+}
+
+/* ===== MEDIA QUERIES RESPONSIVAS ===== */
+
+/* Extra Small devices (phones, less than 576px) */
+@media (max-width: 575.98px) {
+  .hero-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .hero-btn-primary,
+  .hero-btn-secondary {
+    width: 100%;
+    max-width: 280px;
+    padding: 1rem 1.5rem;
+    font-size: 0.9rem;
+    min-width: unset;
+  }
+
+  .subscription-card {
+    min-height: auto;
+    margin-bottom: 1.5rem;
+  }
+
+  .subscription-section .col-lg-4 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .hero-main-title {
+    font-size: 2rem;
+  }
+
+  .hero-section {
+    min-height: 60vh;
+    padding: 2rem 0;
+  }
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .hero-btn-primary,
+  .hero-btn-secondary {
+    min-width: 180px;
+    font-size: 0.95rem;
+  }
+
+  .subscription-card {
+    margin-bottom: 1.5rem;
+    min-height: 420px;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .subscription-section .col-lg-4 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    margin-bottom: 2rem;
+  }
+
+  .subscription-card {
+    min-height: 420px;
+  }
+
+  .hero-section {
+    min-height: 75vh;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .subscription-section .col-lg-4 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .subscription-card {
+    min-height: 480px;
+  }
+}
+
+/* Extra Large devices */
+@media (min-width: 1200px) {
+  .subscription-card {
+    min-height: 500px;
+  }
 }
