@@ -2139,3 +2139,153 @@ document.addEventListener("DOMContentLoaded", () => {
   // Inicia a animação
   requestAnimationFrame(animateCursor);
 });
+
+// ===========================================================================
+// GRÁFICO DE GÊNEROS (Chart.js) - VERSÃO CORRIGIDA
+// ===========================================================================
+
+// Aguarda o DOM carregar completamente
+document.addEventListener("DOMContentLoaded", function () {
+  console.log("DOM carregado, iniciando Chart.js...");
+
+  // Verifica se o Chart.js foi carregado
+  if (typeof Chart === "undefined") {
+    console.error(
+      "Chart.js não foi carregado. Verifique se o script está incluído."
+    );
+    return;
+  }
+
+  // Verifica se o elemento do gráfico existe
+  const genreChartCanvas = document.getElementById("genreChart");
+  if (!genreChartCanvas) {
+    console.error('Elemento com ID "genreChart" não encontrado');
+    return;
+  }
+
+  console.log("Elemento canvas encontrado, criando gráfico...");
+  createGenreChart(genreChartCanvas);
+});
+
+function createGenreChart(canvasElement) {
+  try {
+    const ctx = canvasElement.getContext("2d");
+
+    // Dados do Gráfico
+    const data = {
+      labels: ["Ação", "Aventura", "RPG", "Estratégia", "Shooter", "Esportes"],
+      datasets: [
+        {
+          label: "Quantidade de Jogos",
+          data: [120, 85, 95, 60, 75, 40],
+          backgroundColor: [
+            "rgba(0, 255, 255, 0.8)", // Cyan
+            "rgba(255, 0, 255, 0.8)", // Magenta
+            "rgba(106, 13, 173, 0.8)", // Purple
+            "rgba(0, 212, 255, 0.8)", // Blue
+            "rgba(255, 99, 132, 0.8)", // Red
+            "rgba(255, 206, 86, 0.8)", // Yellow
+          ],
+          borderColor: [
+            "rgba(0, 255, 255, 1)",
+            "rgba(255, 0, 255, 1)",
+            "rgba(106, 13, 173, 1)",
+            "rgba(0, 212, 255, 1)",
+            "rgba(255, 99, 132, 1)",
+            "rgba(255, 206, 86, 1)",
+          ],
+          borderWidth: 2,
+          hoverOffset: 15,
+        },
+      ],
+    };
+
+    // Configuração do Gráfico
+    const config = {
+      type: "doughnut",
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: "#FFFFFF",
+              font: {
+                size: 14,
+                family: "'Orbitron', sans-serif",
+              },
+              padding: 20,
+              usePointStyle: true,
+            },
+          },
+          tooltip: {
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            titleColor: "#00ffff",
+            bodyColor: "#ffffff",
+            borderColor: "#00ffff",
+            borderWidth: 1,
+            titleFont: {
+              size: 16,
+              family: "'Orbitron', sans-serif",
+            },
+            bodyFont: {
+              size: 14,
+              family: "'Orbitron', sans-serif",
+            },
+            callbacks: {
+              label: function (context) {
+                const total = context.dataset.data.reduce(
+                  (sum, value) => sum + value,
+                  0
+                );
+                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                return `${context.label}: ${context.parsed} jogos (${percentage}%)`;
+              },
+            },
+          },
+        },
+        animation: {
+          animateRotate: true,
+          animateScale: true,
+          duration: 1500,
+        },
+        cutout: "50%",
+      },
+    };
+
+    // Cria o gráfico
+    const chart = new Chart(ctx, config);
+    console.log("Gráfico criado com sucesso!", chart);
+
+    return chart;
+  } catch (error) {
+    console.error("Erro ao criar o gráfico:", error);
+
+    // Fallback: mostra uma mensagem de erro no canvas
+    const ctx = canvasElement.getContext("2d");
+    ctx.fillStyle = "#ff0000";
+    ctx.font = "16px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Erro ao carregar gráfico",
+      canvasElement.width / 2,
+      canvasElement.height / 2
+    );
+  }
+}
+
+// Função alternativa para debug
+function debugChart() {
+  console.log("=== DEBUG CHART.JS ===");
+  console.log("Chart.js disponível:", typeof Chart !== "undefined");
+  console.log("Elemento canvas:", document.getElementById("genreChart"));
+  console.log("DOM carregado:", document.readyState);
+
+  if (typeof Chart !== "undefined") {
+    console.log("Versão Chart.js:", Chart.version);
+  }
+}
+
+debugChart();
